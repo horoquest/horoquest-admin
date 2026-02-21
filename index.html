@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HOROQUEST Admin</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+@keyframes reveal{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+input:focus,textarea:focus,select:focus{outline:none}
+textarea{resize:vertical}
+::selection{background:#D4281E;color:#fff}
+body{font-family:'Helvetica Neue','Helvetica','Arial',sans-serif;background:#F5F5F0;color:#1A1A1A}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+var h = React.createElement;
+var useState = React.useState;
+var useEffect = React.useEffect;
+var useRef = React.useRef;
+
+var SB_URL = "https://bqnawfnkukcbqkujsskr.supabase.co";
+var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbmF3Zm5rdWtjYnFrdWpzc2tyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1ODQ5NDAsImV4cCI6MjA4NzE2MDk0MH0.VeSr_1gEnsn3P0_cmQBcOkJNDpUe1rbIAD8E7nSbxQM";
+
+function mkH(token){var o={"apikey":SB_KEY,"Content-Type":"application/json"};o["Authorization"]="Bearer "+(token||SB_KEY);return o;}
+
+function sbGet(path,token){return fetch(SB_URL+"/rest/v1/"+path,{headers:mkH(token)}).then(function(r){return r.json();});}
+function sbPost(path,body,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"POST",headers:Object.assign(mkH(token),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(function(r){return r.json();});}
+function sbPatch(path,body,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"PATCH",headers:Object.assign(mkH(token),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(function(r){return r.json();});}
+function sbDel(path,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"DELETE",headers:mkH(token)});}
+function sbLogin(email,pw){return fetch(SB_URL+"/auth/v1/token?grant_type=password",{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email:email,password:pw})}).then(function(r){return r.json();});}
+
+var DIFFS=[{v:1,l:"Tr\u00e8s facile",m:"Calibre"},{v:2,l:"Facile",m:"Calibre"},{v:3,l:"Moyen",m:"Manufacture"},{v:4,l:"Difficile",m:"Manufacture"},{v:5,l:"Expert",m:"Haute Horlogerie"}];
+var C={bg:"#F5F5F0",fg:"#1A1A1A",mid:"#8A8A85",lt:"#D5D5D0",acc:"#D4281E",card:"#FFFFFF",sub:"#EDEDEA"};
+var font="'Helvetica Neue','Helvetica','Arial',sans-serif";
+var inpS={width:"100%",padding:"12px 0",background:"transparent",border:"none",borderBottom:"1px solid "+C.lt,color:C.fg,fontSize:15,fontFamily:font};
+var selS={padding:"10px 12px",background:C.card,border:"1px solid "+C.lt,borderRadius:0,color:C.fg,fontSize:12,fontFamily:font};
+
+function empty(){return{text:"",diff:1,cat_id:"",expl:"",imgP:null,answers:[{t:"",ok:true},{t:"",ok:false},{t:"",ok:false},{t:"",ok:false}],active:true};}
+function loader(){return h("div",{style:{display:"flex",justifyContent:"center",padding:40}},h("div",{style:{width:20,height:20,border:"2px solid "+C.lt,borderTopColor:C.fg,borderRadius:"50%",animation:"spin 0.6s linear infinite"}}));}
+
+function Admin(){
+  var _qs=useState([]),qs=_qs[0],sQs=_qs[1];
+  var _cats=useState([]),cats=_cats[0],sCats=_cats[1];
+  var _v=useState("list"),v=_v[0],sV=_v[1];
+  var _f=useState(empty()),f=_f[0],sF=_f[1];
+  var _ei=useState(null),ei=_ei[0],sEi=_ei[1];
+  var _fl=useState({cat:"all",diff:"all",search:""}),fl=_fl[0],sFl=_fl[1];
+  var _t=useState(null),toast=_t[0],sT=_t[1];
+  var _cf=useState(null),cf=_cf[0],sCf=_cf[1];
+  var _ld=useState(false),ld=_ld[0],sLd=_ld[1];
+  var _sv=useState(false),saving=_sv[0],sSv=_sv[1];
+  var _tok=useState(null),tok=_tok[0],sTok=_tok[1];
+  var _le=useState(""),le=_le[0],sLe=_le[1];
+  var _lp=useState(""),lp=_lp[0],sLp=_lp[1];
+  var _la=useState(false),la=_la[0],sLa=_la[1];
+  var _lerr=useState(null),lerr=_lerr[0],sLerr=_lerr[1];
+  var fRef=useRef(null);
+
+  function showT(m,err){sT({m:m,e:err});setTimeout(function(){sT(null);},2500);}
+
+  function doLogin(){
+    if(!le.trim()||!lp.trim())return;sLa(true);sLerr(null);
+    sbLogin(le.trim(),lp.trim()).then(function(res){
+      if(res.error){sLerr(res.error_description||"Email ou mot de passe incorrect");sLa(false);return;}
+      if(res.access_token){sTok(res.access_token);sLa(false);loadData(res.access_token);}
+    }).catch(function(e){sLerr("Erreur r\u00e9seau: "+e.message);sLa(false);});
+  }
+
+  function loadData(token){
+    sLd(true);
+    Promise.all([
+      sbGet("categories?order=name",token),
+      sbGet("questions?select=id,text,difficulty,explanation,image_url,active,category_id,categories(name,slug),answers(id,text,is_correct)&order=created_at.desc",token)
+    ]).then(function(results){
+      var c=results[0],q=results[1];
+      if(c&&c.length>0)sCats(c);
+      if(q&&!q.error)sQs(q);
+      sLd(false);
+    }).catch(function(e){console.log("Load failed",e);sLd(false);});
+  }
+
+  function reload(){
+    sbGet("questions?select=id,text,difficulty,explanation,image_url,active,category_id,categories(name,slug),answers(id,text,is_correct)&order=created_at.desc",tok).then(function(q){
+      if(q&&!q.error)sQs(q);
+    });
+  }
+
+  function handleImg(e){
+    var file=e.target.files&&e.target.files[0];if(!file)return;
+    if(file.size>2*1024*1024){showT("Max 2 Mo",true);return;}
+    var r=new FileReader();r.onload=function(ev){sF(function(p){return Object.assign({},p,{imgFile:file,imgP:ev.target.result});});};r.readAsDataURL(file);
+  }
+  function rmImg(){sF(function(p){return Object.assign({},p,{imgFile:null,imgP:null});});if(fRef.current)fRef.current.value="";}
+
+  function setAns(i,field,val){
+    sF(function(p){var ans=p.answers.map(function(a,j){
+      if(field==="ok"&&j===i)return Object.assign({},a,{ok:true});
+      if(field==="ok"&&j!==i)return Object.assign({},a,{ok:false});
+      if(j===i){var u={};u[field]=val;return Object.assign({},a,u);}return a;
+    });return Object.assign({},p,{answers:ans});});
+  }
+
+  function validate(){
+    if(!f.text.trim())return"Question vide";
+    if(!f.cat_id)return"Choisissez une cat\u00e9gorie";
+    if(f.answers.filter(function(a){return a.t.trim();}).length<2)return"Min. 2 r\u00e9ponses";
+    if(!f.answers.some(function(a){return a.ok&&a.t.trim();}))return"Cochez la bonne r\u00e9ponse";
+    return null;
+  }
+
+  function submit(){
+    var err=validate();if(err){showT(err,true);return;}
+    sSv(true);
+    var clean=f.answers.filter(function(a){return a.t.trim();});
+    var p;
+    if(ei){
+      p=sbPatch("questions?id=eq."+ei,{text:f.text.trim(),difficulty:f.diff,category_id:f.cat_id,explanation:f.expl.trim(),active:f.active},tok)
+        .then(function(){return sbDel("answers?question_id=eq."+ei,tok);})
+        .then(function(){return sbPost("answers",clean.map(function(a){return{question_id:ei,text:a.t.trim(),is_correct:a.ok};}),tok);})
+        .then(function(){showT("Modifi\u00e9e");});
+    } else {
+      p=sbPost("questions",{text:f.text.trim(),difficulty:f.diff,category_id:f.cat_id,explanation:f.expl.trim(),active:f.active},tok)
+        .then(function(qRes){
+          if(qRes&&qRes.length>0){
+            return sbPost("answers",clean.map(function(a){return{question_id:qRes[0].id,text:a.t.trim(),is_correct:a.ok};}),tok);
+          }
+        })
+        .then(function(){showT("Ajout\u00e9e");});
+    }
+    p.then(function(){reload();sF(empty());sEi(null);sV("list");sSv(false);})
+     .catch(function(e){showT("Erreur: "+e.message,true);sSv(false);});
+  }
+
+  function startEdit(q){
+    sEi(q.id);
+    var ans=(q.answers||[]).map(function(a){return{t:a.text,ok:a.is_correct};});
+    while(ans.length<4)ans.push({t:"",ok:false});
+    sF({text:q.text,diff:q.difficulty,cat_id:q.category_id||"",expl:q.explanation||"",imgP:q.image_url||null,imgFile:null,answers:ans,active:q.active!==false});
+    sV("form");
+  }
+
+  function toggleActive(q){
+    sbPatch("questions?id=eq."+q.id,{active:!q.active},tok).then(function(){reload();});
+  }
+
+  function del(id){
+    sbDel("answers?question_id=eq."+id,tok)
+      .then(function(){return sbDel("questions?id=eq."+id,tok);})
+      .then(function(){sCf(null);reload();showT("Supprim\u00e9e");});
+  }
+
+  function dup(q){
+    sbPost("questions",{text:q.text+" (copie)",difficulty:q.difficulty,category_id:q.category_id,explanation:q.explanation,active:true},tok)
+      .then(function(qRes){
+        if(qRes&&qRes.length>0){
+          var newId=qRes[0].id;
+          var ans=(q.answers||[]).map(function(a){return{question_id:newId,text:a.text,is_correct:a.is_correct};});
+          return sbPost("answers",ans,tok);
+        }
+      })
+      .then(function(){reload();showT("Dupliqu\u00e9e");});
+  }
+
+  var filtered=qs.filter(function(q){
+    if(fl.cat!=="all"&&q.category_id!==fl.cat)return false;
+    if(fl.diff!=="all"&&q.difficulty!==parseInt(fl.diff))return false;
+    if(fl.search&&q.text.toLowerCase().indexOf(fl.search.toLowerCase())===-1)return false;
+    return true;
+  });
+
+  var stats={total:qs.length,on:qs.filter(function(q){return q.active;}).length,img:qs.filter(function(q){return q.image_url;}).length,
+    byDiff:[1,2,3,4,5].map(function(d){return qs.filter(function(q){return q.difficulty===d;}).length;}),
+    byCat:cats.map(function(c){return{n:c.name,c:qs.filter(function(q){return q.category_id===c.id;}).length};})};
+
+  // Toast
+  var toastEl=toast?h("div",{style:{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:200,padding:"10px 24px",background:toast.e?C.acc:C.fg,color:C.bg,fontSize:13,fontWeight:500,animation:"reveal 0.3s",maxWidth:"90%"}},toast.m):null;
+
+  // Confirm modal
+  var cfEl=cf?h("div",{style:{position:"fixed",inset:0,zIndex:150,display:"flex",alignItems:"center",justifyContent:"center",animation:"fadeIn 0.2s"},onClick:function(){sCf(null);}},
+    h("div",{style:{position:"absolute",inset:0,background:"rgba(0,0,0,0.2)"}}),
+    h("div",{onClick:function(e){e.stopPropagation();},style:{background:C.bg,padding:32,maxWidth:320,width:"90%",border:"1px solid "+C.lt}},
+      h("div",{style:{fontSize:18,fontWeight:400,marginBottom:8}},"Supprimer ?"),
+      h("div",{style:{fontSize:13,color:C.mid,marginBottom:24}},"Irr\u00e9versible."),
+      h("div",{style:{display:"flex",gap:1}},
+        h("button",{onClick:function(){sCf(null);},style:{flex:1,padding:"14px 0",background:"transparent",border:"1px solid "+C.lt,borderRadius:0,fontSize:12,cursor:"pointer",fontFamily:font,color:C.mid}},"Annuler"),
+        h("button",{onClick:function(){del(cf);},style:{flex:1,padding:"14px 0",background:C.acc,border:"none",borderRadius:0,fontSize:12,cursor:"pointer",fontFamily:font,color:"#fff"}},"Supprimer")))
+  ):null;
+
+  // Header
+  var header=h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 24px",borderBottom:"1px solid "+C.lt,position:"sticky",top:0,background:C.bg,zIndex:10}},
+    h("div",null,
+      h("span",{style:{fontSize:11,fontWeight:500,letterSpacing:"0.35em",textTransform:"uppercase"}},"Horoquest"),
+      h("span",{style:{fontSize:11,color:C.mid,letterSpacing:"0.1em",marginLeft:12}},"Admin")),
+    h("div",{style:{display:"flex",gap:1}},
+      ["list","form","stats"].map(function(tab){
+        var labels={list:"Liste",form:ei?"Modifier":"Ajouter",stats:"Stats"};
+        return h("button",{key:tab,onClick:function(){if(tab==="form"&&v!=="form"){sEi(null);sF(Object.assign(empty(),{cat_id:cats.length>0?cats[0].id:""}));}sV(tab);},style:{padding:"8px 16px",background:v===tab?C.fg:"transparent",color:v===tab?C.bg:C.mid,border:"1px solid "+C.lt,borderRadius:0,fontSize:11,letterSpacing:"0.08em",cursor:"pointer",fontFamily:font}},labels[tab]);
+      })));
+
+  // Loading
+  if(ld) return h("div",{style:{minHeight:"100vh",background:C.bg,fontFamily:font}},header,loader());
+
+  // LOGIN GATE
+  if(!tok) return h("div",{style:{minHeight:"100vh",background:C.bg,color:C.fg,fontFamily:font,display:"flex",justifyContent:"center"}},
+    h("div",{style:{width:"100%",maxWidth:400,padding:"0 24px",display:"flex",flexDirection:"column",justifyContent:"center",minHeight:"100vh"}},
+      h("div",{style:{fontSize:11,fontWeight:500,letterSpacing:"0.35em",textTransform:"uppercase",marginBottom:8}},"Horoquest"),
+      h("div",{style:{fontSize:24,fontWeight:300,marginBottom:40}},"Admin."),
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"EMAIL"),
+      h("input",{type:"email",value:le,onChange:function(e){sLe(e.target.value);},placeholder:"admin@horoquest.com",style:{width:"100%",padding:"14px 0",background:"transparent",border:"none",borderBottom:"1px solid "+C.lt,color:C.fg,fontSize:15,fontFamily:font,marginBottom:20}}),
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"MOT DE PASSE"),
+      h("input",{type:"password",value:lp,onChange:function(e){sLp(e.target.value);},onKeyDown:function(e){if(e.key==="Enter")doLogin();},placeholder:"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",style:{width:"100%",padding:"14px 0",background:"transparent",border:"none",borderBottom:"1px solid "+C.lt,color:C.fg,fontSize:15,fontFamily:font}}),
+      lerr&&h("div",{style:{fontSize:12,color:C.acc,marginTop:12}},lerr),
+      h("div",{style:{height:24}}),
+      h("button",{onClick:doLogin,disabled:la,style:{width:"100%",padding:"16px 0",background:C.fg,color:C.bg,border:"none",borderRadius:0,fontSize:13,fontWeight:500,letterSpacing:"0.15em",textTransform:"uppercase",cursor:"pointer",fontFamily:font,opacity:la||!le.trim()||!lp.trim()?0.4:1}},la?"Connexion\u2026":"Connexion")));
+
+  // LIST
+  var listView=h("div",{style:{padding:24}},
+    h("div",{style:{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}},
+      h("input",{placeholder:"Rechercher\u2026",value:fl.search,onChange:function(e){sFl(function(p){return Object.assign({},p,{search:e.target.value});});},style:Object.assign({},inpS,{flex:1,minWidth:140,fontSize:13,padding:"10px 0"})}),
+      h("select",{value:fl.cat,onChange:function(e){sFl(function(p){return Object.assign({},p,{cat:e.target.value});});},style:selS},
+        h("option",{value:"all"},"Cat\u00e9gorie"),cats.map(function(c){return h("option",{key:c.id,value:c.id},c.name);})),
+      h("select",{value:fl.diff,onChange:function(e){sFl(function(p){return Object.assign({},p,{diff:e.target.value});});},style:selS},
+        h("option",{value:"all"},"Difficult\u00e9"),DIFFS.map(function(d){return h("option",{key:d.v,value:d.v},d.v+" - "+d.l);}))),
+    h("div",{style:{fontSize:11,color:C.mid,marginBottom:12}},filtered.length+" question"+(filtered.length>1?"s":"")),
+    filtered.map(function(q,i){
+      var catName=q.categories?q.categories.name:"";
+      var ok=(q.answers||[]).find(function(a){return a.is_correct;});
+      return h("div",{key:q.id,style:{display:"flex",gap:12,padding:"14px 0",borderBottom:"1px solid "+C.sub,opacity:q.active?1:0.4,animation:"reveal 0.15s ease "+(i*0.02)+"s both"}},
+        h("div",{style:{flex:1,minWidth:0}},
+          h("div",{style:{display:"flex",gap:8,alignItems:"center",marginBottom:2}},
+            h("span",{style:{fontSize:11,color:C.mid}},"\u2605".repeat(q.difficulty)),
+            h("span",{style:{fontSize:11,color:C.mid}},catName),
+            !q.active&&h("span",{style:{fontSize:10,color:C.acc,fontWeight:500}},"INACTIF")),
+          h("div",{style:{fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:2}},q.text),
+          h("div",{style:{fontSize:12,color:C.mid}},"\u2713 "+(ok?ok.text:""))),
+        h("div",{style:{display:"flex",gap:4,alignItems:"flex-start",flexShrink:0,flexWrap:"wrap"}},
+          h("button",{onClick:function(){startEdit(q);},style:{padding:"6px 10px",background:"transparent",border:"1px solid "+C.lt,borderRadius:0,fontSize:11,cursor:"pointer",fontFamily:font,color:C.mid}},"Mod."),
+          h("button",{onClick:function(){toggleActive(q);},style:{padding:"6px 10px",background:"transparent",border:"1px solid "+(q.active?C.mid:C.lt),borderRadius:0,fontSize:11,cursor:"pointer",fontFamily:font,color:q.active?C.fg:C.mid}},q.active?"On":"Off"),
+          h("button",{onClick:function(){dup(q);},style:{padding:"6px 10px",background:"transparent",border:"1px solid "+C.lt,borderRadius:0,fontSize:11,cursor:"pointer",fontFamily:font,color:C.mid}},"Dup."),
+          h("button",{onClick:function(){sCf(q.id);},style:{padding:"6px 10px",background:"transparent",border:"1px solid "+C.acc+"40",borderRadius:0,fontSize:11,cursor:"pointer",fontFamily:font,color:C.acc}},"Suppr."))
+      );
+    }),
+    filtered.length===0&&h("div",{style:{textAlign:"center",padding:40,color:C.mid,fontSize:13}},qs.length===0?"Aucune question en base. Ajoutez-en une.":"Aucun r\u00e9sultat.")
+  );
+
+  // FORM
+  var formView=h("div",{style:{padding:24,maxWidth:480,margin:"0 auto"}},
+    h("div",{style:{fontSize:18,fontWeight:400,marginBottom:32}},ei?"Modifier":"Nouvelle question"),
+    h("div",{style:{marginBottom:24}},
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"QUESTION"),
+      h("textarea",{value:f.text,onChange:function(e){sF(function(p){return Object.assign({},p,{text:e.target.value});});},rows:3,placeholder:"Ex : Manufacture du calibre El Primero.",style:Object.assign({},inpS,{border:"1px solid "+C.lt,padding:14,minHeight:80})})),
+    h("div",{style:{marginBottom:24}},
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"IMAGE"),
+      f.imgP?h("div",{style:{position:"relative",marginBottom:8}},
+        h("img",{src:f.imgP,style:{width:"100%",maxHeight:180,objectFit:"cover",display:"block"}}),
+        h("button",{onClick:rmImg,style:{position:"absolute",top:8,right:8,width:28,height:28,background:C.fg,border:"none",color:C.bg,fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}},"\u2715"))
+      :h("div",{onClick:function(){fRef.current&&fRef.current.click();},style:{border:"1px solid "+C.lt,padding:"24px 16px",textAlign:"center",cursor:"pointer"}},
+        h("div",{style:{fontSize:13,color:C.mid}},"Cliquez pour ajouter"),
+        h("div",{style:{fontSize:11,color:C.lt,marginTop:4}},"JPEG / PNG - Max 2 Mo")),
+      h("input",{ref:fRef,type:"file",accept:"image/jpeg,image/png,image/webp",onChange:handleImg,style:{display:"none"}})),
+    h("div",{style:{marginBottom:24}},
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:8}},"DIFFICULT\u00c9"),
+      h("div",{style:{display:"flex",gap:1}},
+        [1,2,3,4,5].map(function(d){return h("button",{key:d,onClick:function(){sF(function(p){return Object.assign({},p,{diff:d});});},style:{flex:1,padding:"14px 0",background:f.diff===d?C.fg:"transparent",color:f.diff===d?C.bg:C.mid,border:"1px solid "+C.lt,borderRadius:0,fontSize:13,cursor:"pointer",fontFamily:font}},d);})),
+      h("div",{style:{fontSize:11,color:C.mid,marginTop:6}},(DIFFS.find(function(d){return d.v===f.diff;})||{}).l+" - "+(DIFFS.find(function(d){return d.v===f.diff;})||{}).m)),
+    h("div",{style:{marginBottom:24}},
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:8}},"CAT\u00c9GORIE"),
+      cats.map(function(c){return h("button",{key:c.id,onClick:function(){sF(function(p){return Object.assign({},p,{cat_id:c.id});});},style:{width:"100%",padding:"10px 12px",background:f.cat_id===c.id?C.fg:"transparent",color:f.cat_id===c.id?C.bg:C.mid,border:"1px solid "+C.lt,borderRadius:0,fontSize:12,cursor:"pointer",fontFamily:font,textAlign:"left",marginBottom:1}},c.name);})),
+    h("div",{style:{marginBottom:24}},
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:8}},"R\u00c9PONSES"),
+      f.answers.map(function(a,i){
+        return h("div",{key:i,style:{display:"flex",gap:8,marginBottom:8,alignItems:"center"}},
+          h("button",{onClick:function(){setAns(i,"ok",true);},style:{width:36,height:36,background:a.ok?C.fg:"transparent",color:a.ok?C.bg:C.lt,border:"1px solid "+(a.ok?C.fg:C.lt),borderRadius:0,fontSize:12,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontFamily:font}},a.ok?"\u2713":String.fromCharCode(65+i)),
+          h("input",{value:a.t,onChange:function(e){setAns(i,"t",e.target.value);},placeholder:"R\u00e9ponse "+(i+1),style:Object.assign({},inpS,{fontSize:14})}));
+      })),
+    h("div",{style:{marginBottom:24}},
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"EXPLICATION"),
+      h("textarea",{value:f.expl,onChange:function(e){sF(function(p){return Object.assign({},p,{expl:e.target.value});});},rows:2,placeholder:"Affich\u00e9e apr\u00e8s r\u00e9ponse.",style:Object.assign({},inpS,{border:"1px solid "+C.lt,padding:14})})),
+    h("div",{style:{marginBottom:32}},
+      h("button",{onClick:function(){sF(function(p){return Object.assign({},p,{active:!p.active});});},style:{display:"flex",alignItems:"center",gap:10,background:"none",border:"none",cursor:"pointer",fontFamily:font,color:C.fg,fontSize:13}},
+        h("div",{style:{width:14,height:14,border:"1px solid "+(f.active?C.fg:C.lt),background:f.active?C.fg:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:C.bg,fontSize:10}},f.active?"\u2713":""),
+        "Active")),
+    h("div",{style:{display:"flex",gap:1}},
+      ei&&h("button",{onClick:function(){sEi(null);sF(empty());sV("list");},style:{flex:1,padding:"16px 0",background:"transparent",border:"1px solid "+C.lt,borderRadius:0,fontSize:13,cursor:"pointer",fontFamily:font,color:C.mid}},"Annuler"),
+      h("button",{onClick:submit,disabled:saving,style:{flex:2,padding:"16px 0",background:C.fg,color:C.bg,border:"none",borderRadius:0,fontSize:13,fontWeight:500,letterSpacing:"0.1em",cursor:"pointer",fontFamily:font,opacity:saving?0.5:1}},saving?"Enregistrement\u2026":ei?"Sauvegarder":"Ajouter"))
+  );
+
+  // STATS
+  var maxD=Math.max.apply(null,stats.byDiff)||1;
+  var maxC=Math.max.apply(null,stats.byCat.map(function(c){return c.c;}))||1;
+  var statsView=h("div",{style:{padding:24,maxWidth:480,margin:"0 auto"}},
+    h("div",{style:{fontSize:18,fontWeight:400,marginBottom:32}},"Banque de questions"),
+    h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",borderTop:"1px solid "+C.lt,borderBottom:"1px solid "+C.lt,marginBottom:32}},
+      [{l:"Total",v:stats.total},{l:"Actives",v:stats.on},{l:"Images",v:stats.img}].map(function(s,i){
+        return h("div",{key:i,style:{padding:"16px 0",borderRight:i<2?"1px solid "+C.lt:"none"}},
+          h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:4}},s.l),
+          h("div",{style:{fontSize:24,fontWeight:300}},s.v));})),
+    h("div",{style:{marginBottom:24}},
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:12}},"Par difficult\u00e9"),
+      DIFFS.map(function(d,i){var c=stats.byDiff[i];return h("div",{key:d.v,style:{display:"flex",alignItems:"center",gap:12,marginBottom:8}},
+        h("div",{style:{width:50,fontSize:12,color:C.mid}},"\u2605".repeat(d.v)),
+        h("div",{style:{flex:1,height:3,background:C.sub}},h("div",{style:{width:c>0?(c/maxD*100)+"%":"0%",height:"100%",background:C.fg}})),
+        h("div",{style:{width:24,textAlign:"right",fontSize:13,fontWeight:500}},c));})),
+    stats.byCat.length>0&&h("div",{style:{marginBottom:24}},
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:12}},"Par cat\u00e9gorie"),
+      stats.byCat.map(function(c,i){return h("div",{key:i,style:{display:"flex",alignItems:"center",gap:12,marginBottom:8}},
+        h("div",{style:{width:90,fontSize:12,color:C.mid}},c.n),
+        h("div",{style:{flex:1,height:3,background:C.sub}},h("div",{style:{width:c.c>0?(c.c/maxC*100)+"%":"0%",height:"100%",background:C.fg}})),
+        h("div",{style:{width:24,textAlign:"right",fontSize:13,fontWeight:500}},c.c));})),
+    stats.total<50&&h("div",{style:{padding:"16px 20px",background:C.sub,fontSize:12,color:C.mid,lineHeight:1.6,borderLeft:"2px solid "+C.fg}},stats.total+" questions. Visez 50+.")
+  );
+
+  return h("div",{style:{minHeight:"100vh",background:C.bg,color:C.fg,fontFamily:font}},
+    toastEl,cfEl,header,
+    v==="list"?listView:v==="form"?formView:statsView);
+}
+
+ReactDOM.render(h(Admin), document.getElementById("root"));
+</script>
+</body>
+</html>
