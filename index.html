@@ -62,6 +62,7 @@ function Admin(){
   var _la=useState(false),la=_la[0],sLa=_la[1];
   var _lerr=useState(null),lerr=_lerr[0],sLerr=_lerr[1];
   var fRef=useRef(null);
+  var imgFileRef=useRef(null);
 
   function showT(m,err){sT({m:m,e:err});setTimeout(function(){sT(null);},2500);}
 
@@ -95,9 +96,10 @@ function Admin(){
   function handleImg(e){
     var file=e.target.files&&e.target.files[0];if(!file)return;
     if(file.size>2*1024*1024){showT("Max 2 Mo",true);return;}
-    var r=new FileReader();r.onload=function(ev){sF(function(p){return Object.assign({},p,{imgFile:file,imgP:ev.target.result});});};r.readAsDataURL(file);
+    imgFileRef.current=file;
+    var r=new FileReader();r.onload=function(ev){sF(function(p){return Object.assign({},p,{imgP:ev.target.result});});};r.readAsDataURL(file);
   }
-  function rmImg(){sF(function(p){return Object.assign({},p,{imgFile:null,imgP:null});});if(fRef.current)fRef.current.value="";}
+  function rmImg(){imgFileRef.current=null;sF(function(p){return Object.assign({},p,{imgP:null});});if(fRef.current)fRef.current.value="";}
 
   function setAns(i,field,val){
     sF(function(p){var ans=p.answers.map(function(a,j){
@@ -133,10 +135,16 @@ function Admin(){
     sSv(true);
     var clean=f.answers.filter(function(a){return a.t.trim();});
 
-    // Upload image first if new file selected
     var imgPromise;
-    if(f.imgFile){
-      imgPromise=uploadImg(f.imgFile,tok);
+    var theFile=imgFileRef.current;
+    console.log("SUBMIT - imgFile:",theFile,"imgP:",f.imgP?f.imgP.substring(0,50):"null");
+    if(theFile){
+      console.log("UPLOADING:",theFile.name,theFile.size,theFile.type);
+      imgPromise=uploadImg(theFile,tok).then(function(url){
+        console.log("UPLOAD OK:",url);
+        imgFileRef.current=null;
+        return url;
+      });
     } else if(f.imgP&&f.imgP.indexOf("supabase")!==-1){
       imgPromise=Promise.resolve(f.imgP);
     } else {
@@ -167,9 +175,10 @@ function Admin(){
 
   function startEdit(q){
     sEi(q.id);
+    imgFileRef.current=null;
     var ans=(q.answers||[]).map(function(a){return{t:a.text,ok:a.is_correct};});
     while(ans.length<4)ans.push({t:"",ok:false});
-    sF({text:q.text,diff:q.difficulty,cat_id:q.category_id||"",expl:q.explanation||"",imgP:q.image_url||null,imgFile:null,answers:ans,active:q.active!==false});
+    sF({text:q.text,diff:q.difficulty,cat_id:q.category_id||"",expl:q.explanation||"",imgP:q.image_url||null,answers:ans,active:q.active!==false});
     sV("form");
   }
 
