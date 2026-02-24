@@ -115,27 +115,54 @@ function Admin(){
     return null;
   }
 
+  function uploadImg(file,token){
+    var ext=file.name.split(".").pop()||"jpg";
+    var name=Date.now()+"_"+Math.random().toString(36).slice(2,8)+"."+ext;
+    return fetch(SB_URL+"/storage/v1/object/questions/"+name,{
+      method:"POST",
+      headers:{"apikey":SB_KEY,"Authorization":"Bearer "+token,"Content-Type":file.type,"x-upsert":"true"},
+      body:file
+    }).then(function(r){
+      if(!r.ok)throw new Error("Upload failed");
+      return SB_URL+"/storage/v1/object/public/questions/"+name;
+    });
+  }
+
   function submit(){
     var err=validate();if(err){showT(err,true);return;}
     sSv(true);
     var clean=f.answers.filter(function(a){return a.t.trim();});
-    var p;
-    if(ei){
-      p=sbPatch("questions?id=eq."+ei,{text:f.text.trim(),difficulty:f.diff,category_id:f.cat_id,explanation:f.expl.trim(),active:f.active},tok)
-        .then(function(){return sbDel("answers?question_id=eq."+ei,tok);})
-        .then(function(){return sbPost("answers",clean.map(function(a){return{question_id:ei,text:a.t.trim(),is_correct:a.ok};}),tok);})
-        .then(function(){showT("Modifi\u00e9e");});
+
+    // Upload image first if new file selected
+    var imgPromise;
+    if(f.imgFile){
+      imgPromise=uploadImg(f.imgFile,tok);
+    } else if(f.imgP&&f.imgP.indexOf("supabase")!==-1){
+      imgPromise=Promise.resolve(f.imgP);
     } else {
-      p=sbPost("questions",{text:f.text.trim(),difficulty:f.diff,category_id:f.cat_id,explanation:f.expl.trim(),active:f.active},tok)
-        .then(function(qRes){
-          if(qRes&&qRes.length>0){
-            return sbPost("answers",clean.map(function(a){return{question_id:qRes[0].id,text:a.t.trim(),is_correct:a.ok};}),tok);
-          }
-        })
-        .then(function(){showT("Ajout\u00e9e");});
+      imgPromise=Promise.resolve(null);
     }
-    p.then(function(){reload();sF(empty());sEi(null);sV("list");sSv(false);})
-     .catch(function(e){showT("Erreur: "+e.message,true);sSv(false);});
+
+    imgPromise.then(function(imageUrl){
+      var qData={text:f.text.trim(),difficulty:f.diff,category_id:f.cat_id,explanation:f.expl.trim(),active:f.active,image_url:imageUrl};
+      var p;
+      if(ei){
+        p=sbPatch("questions?id=eq."+ei,qData,tok)
+          .then(function(){return sbDel("answers?question_id=eq."+ei,tok);})
+          .then(function(){return sbPost("answers",clean.map(function(a){return{question_id:ei,text:a.t.trim(),is_correct:a.ok};}),tok);})
+          .then(function(){showT("Modifi\u00e9e");});
+      } else {
+        p=sbPost("questions",qData,tok)
+          .then(function(qRes){
+            if(qRes&&qRes.length>0){
+              return sbPost("answers",clean.map(function(a){return{question_id:qRes[0].id,text:a.t.trim(),is_correct:a.ok};}),tok);
+            }
+          })
+          .then(function(){showT("Ajout\u00e9e");});
+      }
+      p.then(function(){reload();sF(empty());sEi(null);sV("list");sSv(false);})
+       .catch(function(e){showT("Erreur: "+e.message,true);sSv(false);});
+    }).catch(function(e){showT("Erreur upload: "+e.message,true);sSv(false);});
   }
 
   function startEdit(q){
