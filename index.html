@@ -73,13 +73,17 @@ function Admin(){
   function doLogin(){
     if(!le.trim()||!lp.trim())return;sLa(true);sLerr(null);
     sbLogin(le.trim(),lp.trim()).then(function(res){
-      if(res.error){sLerr(res.error_description||res.error.message||"Email ou mot de passe incorrect");sLa(false);return;}
-      if(res.access_token&&res.user&&res.user.id===ADMIN_UID){
-        sTok(res.access_token);sLa(false);loadData(res.access_token);
-      } else if(res.access_token){
-        sLerr("Acc\u00e8s r\u00e9serv\u00e9 \u00e0 l'administrateur.");sLa(false);
+      console.log("LOGIN RESPONSE:",JSON.stringify(res));
+      if(res.error_description){sLerr(res.error_description);sLa(false);return;}
+      if(res.error){sLerr(typeof res.error==="string"?res.error:res.error.message||"Erreur");sLa(false);return;}
+      if(res.access_token){
+        if(res.user&&res.user.id===ADMIN_UID){
+          sTok(res.access_token);sLa(false);loadData(res.access_token);
+        } else {
+          sLerr("Acc\u00e8s r\u00e9serv\u00e9. UID: "+(res.user?res.user.id:"inconnu"));sLa(false);
+        }
       } else {
-        sLerr("Erreur de connexion");sLa(false);
+        sLerr("R\u00e9ponse inattendue du serveur");sLa(false);
       }
     }).catch(function(e){sLerr("Erreur r\u00e9seau: "+e.message);sLa(false);});
   }
