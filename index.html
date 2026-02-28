@@ -35,8 +35,8 @@ function sbGet(path,token){return fetch(SB_URL+"/rest/v1/"+path,{headers:mkH(tok
 function sbPost(path,body,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"POST",headers:Object.assign(mkH(token),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(function(r){return r.json();});}
 function sbPatch(path,body,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"PATCH",headers:Object.assign(mkH(token),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(function(r){return r.json();});}
 function sbDel(path,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"DELETE",headers:mkH(token)});}
-function sbMagicLink(email){return fetch(SB_URL+"/auth/v1/otp",{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email:email,options:{emailRedirectTo:"https://horoquest-admin.vercel.app"}})}).then(function(r){return r.json();});}
-function sbGetUser(token){return fetch(SB_URL+"/auth/v1/user",{headers:{"apikey":SB_KEY,"Authorization":"Bearer "+token}}).then(function(r){return r.json();});}
+function sbSignup(email,pw){return fetch(SB_URL+"/auth/v1/signup",{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email:email,password:pw})}).then(function(r){return r.json();});}
+function sbLogin(email,pw){return fetch(SB_URL+"/auth/v1/token?grant_type=password",{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email:email,password:pw})}).then(function(r){return r.json();});}
 
 var DIFFS=[{v:1,l:"Tr\u00e8s facile",m:"Calibre"},{v:2,l:"Facile",m:"Calibre"},{v:3,l:"Moyen",m:"Manufacture"},{v:4,l:"Difficile",m:"Manufacture"},{v:5,l:"Expert",m:"Haute Horlogerie"}];
 var C={bg:"#F5F5F0",fg:"#1A1A1A",mid:"#8A8A85",lt:"#D5D5D0",acc:"#D4281E",card:"#FFFFFF",sub:"#EDEDEA"};
@@ -71,28 +71,18 @@ function Admin(){
   var _sent=useState(false),sent=_sent[0],sSent=_sent[1];
 
   function doLogin(){
-    if(!le.trim())return;sLa(true);sLerr(null);
-    sbMagicLink(le.trim()).then(function(res){
-      if(res.error){sLerr(res.error.message||"Erreur");sLa(false);return;}
-      sLa(false);sSent(true);
+    if(!le.trim()||!lp.trim())return;sLa(true);sLerr(null);
+    sbLogin(le.trim(),lp.trim()).then(function(res){
+      if(res.error){sLerr(res.error_description||res.error.message||"Email ou mot de passe incorrect");sLa(false);return;}
+      if(res.access_token&&res.user&&res.user.id===ADMIN_UID){
+        sTok(res.access_token);sLa(false);loadData(res.access_token);
+      } else if(res.access_token){
+        sLerr("Acc\u00e8s r\u00e9serv\u00e9 \u00e0 l'administrateur.");sLa(false);
+      } else {
+        sLerr("Erreur de connexion");sLa(false);
+      }
     }).catch(function(e){sLerr("Erreur r\u00e9seau: "+e.message);sLa(false);});
   }
-
-  // Check URL hash for magic link token on load
-  useEffect(function(){
-    var h=window.location.hash;
-    if(!h||h.length<2)return;
-    var params={};
-    h.substring(1).split("&").forEach(function(p){var kv=p.split("=");if(kv.length===2)params[kv[0]]=decodeURIComponent(kv[1]);});
-    if(params.access_token){
-      window.location.hash="";
-      var token=params.access_token;
-      sbGetUser(token).then(function(user){
-        if(user&&user.id===ADMIN_UID){sTok(token);loadData(token);}
-        else{sLerr("Acc\u00e8s r\u00e9serv\u00e9 \u00e0 l'administrateur.");}
-      }).catch(function(){sLerr("Erreur de v\u00e9rification.");});
-    }
-  },[]);
 
   function loadData(token){
     sLd(true);
@@ -268,16 +258,13 @@ function Admin(){
     h("div",{style:{width:"100%",maxWidth:400,padding:"0 24px",display:"flex",flexDirection:"column",justifyContent:"center",minHeight:"100vh"}},
       h("div",{style:{fontSize:11,fontWeight:500,letterSpacing:"0.35em",textTransform:"uppercase",marginBottom:8}},"Horoquest"),
       h("div",{style:{fontSize:24,fontWeight:300,marginBottom:40}},"Admin."),
-      sent?h("div",{style:{animation:"reveal 0.3s"}},
-        h("div",{style:{fontSize:15,fontWeight:400,marginBottom:8}},"V\u00e9rifiez votre email."),
-        h("div",{style:{fontSize:13,color:C.mid,marginBottom:24}},"Lien envoy\u00e9 \u00e0 "+le),
-        h("button",{onClick:function(){sSent(false);},style:{background:"none",border:"none",color:C.fg,cursor:"pointer",fontFamily:font,fontSize:12,textDecoration:"underline"}},"Autre email"))
-      :h("div",null,
-        h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"EMAIL"),
-        h("input",{type:"email",value:le,onChange:function(e){sLe(e.target.value);},onKeyDown:function(e){if(e.key==="Enter")doLogin();},placeholder:"admin@horoquest.com",autoFocus:true,style:{width:"100%",padding:"14px 0",background:"transparent",border:"none",borderBottom:"1px solid "+C.lt,color:C.fg,fontSize:15,fontFamily:font}}),
-        lerr&&h("div",{style:{fontSize:12,color:C.acc,marginTop:12}},lerr),
-        h("div",{style:{height:24}}),
-        h("button",{onClick:doLogin,disabled:la,style:{width:"100%",padding:"16px 0",background:C.fg,color:C.bg,border:"none",borderRadius:0,fontSize:13,fontWeight:500,letterSpacing:"0.15em",textTransform:"uppercase",cursor:"pointer",fontFamily:font,opacity:la||!le.trim()?0.4:1}},la?"Envoi\u2026":"Envoyer un magic link"))));
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"EMAIL"),
+      h("input",{type:"email",value:le,onChange:function(e){sLe(e.target.value);},placeholder:"admin@horoquest.com",autoFocus:true,style:{width:"100%",padding:"14px 0",background:"transparent",border:"none",borderBottom:"1px solid "+C.lt,color:C.fg,fontSize:15,fontFamily:font,marginBottom:20}}),
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"MOT DE PASSE"),
+      h("input",{type:"password",value:lp,onChange:function(e){sLp(e.target.value);},onKeyDown:function(e){if(e.key==="Enter")doLogin();},placeholder:"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",style:{width:"100%",padding:"14px 0",background:"transparent",border:"none",borderBottom:"1px solid "+C.lt,color:C.fg,fontSize:15,fontFamily:font}}),
+      lerr&&h("div",{style:{fontSize:12,color:C.acc,marginTop:12}},lerr),
+      h("div",{style:{height:24}}),
+      h("button",{onClick:doLogin,disabled:la,style:{width:"100%",padding:"16px 0",background:C.fg,color:C.bg,border:"none",borderRadius:0,fontSize:13,fontWeight:500,letterSpacing:"0.15em",textTransform:"uppercase",cursor:"pointer",fontFamily:font,opacity:la||!le.trim()||!lp.trim()?0.4:1}},la?"Connexion\u2026":"Connexion")));
 
   // LIST
   var listView=h("div",{style:{padding:24}},
