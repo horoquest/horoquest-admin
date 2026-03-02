@@ -27,16 +27,14 @@ var useRef = React.useRef;
 
 var SB_URL = "https://bqnawfnkukcbqkujsskr.supabase.co";
 var SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbmF3Zm5rdWtjYnFrdWpzc2tyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1ODQ5NDAsImV4cCI6MjA4NzE2MDk0MH0.VeSr_1gEnsn3P0_cmQBcOkJNDpUe1rbIAD8E7nSbxQM";
-var ADMIN_UID = "97656964-8cfc-4e77-bef8-2f9961234128";
+var ADMIN_PASS = "horoquest2025";
 
-function mkH(token){var o={"apikey":SB_KEY,"Content-Type":"application/json"};o["Authorization"]="Bearer "+(token||SB_KEY);return o;}
+function mkH(){return{"apikey":SB_KEY,"Content-Type":"application/json","Authorization":"Bearer "+SB_KEY};}
 
-function sbGet(path,token){return fetch(SB_URL+"/rest/v1/"+path,{headers:mkH(token)}).then(function(r){return r.json();});}
-function sbPost(path,body,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"POST",headers:Object.assign(mkH(token),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(function(r){return r.json();});}
-function sbPatch(path,body,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"PATCH",headers:Object.assign(mkH(token),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(function(r){return r.json();});}
-function sbDel(path,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"DELETE",headers:mkH(token)});}
-function sbSignup(email,pw){return fetch(SB_URL+"/auth/v1/signup",{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email:email,password:pw})}).then(function(r){return r.json();});}
-function sbLogin(email,pw){return fetch(SB_URL+"/auth/v1/token?grant_type=password",{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email:email,password:pw})}).then(function(r){return r.json();});}
+function sbGet(path){return fetch(SB_URL+"/rest/v1/"+path,{headers:mkH()}).then(function(r){return r.json();});}
+function sbPost(path,body){return fetch(SB_URL+"/rest/v1/"+path,{method:"POST",headers:Object.assign(mkH(),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(function(r){return r.json();});}
+function sbPatch(path,body){return fetch(SB_URL+"/rest/v1/"+path,{method:"PATCH",headers:Object.assign(mkH(),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(function(r){return r.json();});}
+function sbDel(path){return fetch(SB_URL+"/rest/v1/"+path,{method:"DELETE",headers:mkH()});}
 
 var DIFFS=[{v:1,l:"Tr\u00e8s facile",m:"Calibre"},{v:2,l:"Facile",m:"Calibre"},{v:3,l:"Moyen",m:"Manufacture"},{v:4,l:"Difficile",m:"Manufacture"},{v:5,l:"Expert",m:"Haute Horlogerie"}];
 var C={bg:"#F5F5F0",fg:"#1A1A1A",mid:"#8A8A85",lt:"#D5D5D0",acc:"#D4281E",card:"#FFFFFF",sub:"#EDEDEA"};
@@ -58,41 +56,24 @@ function Admin(){
   var _cf=useState(null),cf=_cf[0],sCf=_cf[1];
   var _ld=useState(false),ld=_ld[0],sLd=_ld[1];
   var _sv=useState(false),saving=_sv[0],sSv=_sv[1];
-  var _tok=useState(null),tok=_tok[0],sTok=_tok[1];
-  var _le=useState(""),le=_le[0],sLe=_le[1];
+  var _tok=useState(false),tok=_tok[0],sTok=_tok[1];
   var _lp=useState(""),lp=_lp[0],sLp=_lp[1];
-  var _la=useState(false),la=_la[0],sLa=_la[1];
   var _lerr=useState(null),lerr=_lerr[0],sLerr=_lerr[1];
   var fRef=useRef(null);
   var imgFileRef=useRef(null);
 
   function showT(m,err){sT({m:m,e:err});setTimeout(function(){sT(null);},2500);}
 
-  var _sent=useState(false),sent=_sent[0],sSent=_sent[1];
-
   function doLogin(){
-    if(!le.trim()||!lp.trim())return;sLa(true);sLerr(null);
-    sbLogin(le.trim(),lp.trim()).then(function(res){
-      console.log("LOGIN RESPONSE:",JSON.stringify(res));
-      if(res.error_description){sLerr(res.error_description);sLa(false);return;}
-      if(res.error){sLerr(typeof res.error==="string"?res.error:res.error.message||"Erreur");sLa(false);return;}
-      if(res.access_token){
-        if(res.user&&res.user.id===ADMIN_UID){
-          sTok(res.access_token);sLa(false);loadData(res.access_token);
-        } else {
-          sLerr("Acc\u00e8s r\u00e9serv\u00e9. UID: "+(res.user?res.user.id:"inconnu"));sLa(false);
-        }
-      } else {
-        sLerr("R\u00e9ponse inattendue du serveur");sLa(false);
-      }
-    }).catch(function(e){sLerr("Erreur r\u00e9seau: "+e.message);sLa(false);});
+    if(lp.trim()===ADMIN_PASS){sTok(true);sLerr(null);loadData();}
+    else{sLerr("Mot de passe incorrect");}
   }
 
-  function loadData(token){
+  function loadData(){
     sLd(true);
     Promise.all([
-      sbGet("categories?order=name",token),
-      sbGet("questions?select=id,text,text_en,difficulty,explanation,explanation_en,image_url,active,category_id,categories(name,slug),answers(id,text,text_en,is_correct)&order=created_at.desc",token)
+      sbGet("categories?order=name"),
+      sbGet("questions?select=id,text,text_en,difficulty,explanation,explanation_en,image_url,active,category_id,categories(name,slug),answers(id,text,text_en,is_correct)&order=created_at.desc")
     ]).then(function(results){
       var c=results[0],q=results[1];
       if(c&&c.length>0)sCats(c);
@@ -102,7 +83,7 @@ function Admin(){
   }
 
   function reload(){
-    sbGet("questions?select=id,text,text_en,difficulty,explanation,explanation_en,image_url,active,category_id,categories(name,slug),answers(id,text,text_en,is_correct)&order=created_at.desc",tok).then(function(q){
+    sbGet("questions?select=id,text,text_en,difficulty,explanation,explanation_en,image_url,active,category_id,categories(name,slug),answers(id,text,text_en,is_correct)&order=created_at.desc").then(function(q){
       if(q&&!q.error)sQs(q);
     });
   }
@@ -131,12 +112,12 @@ function Admin(){
     return null;
   }
 
-  function uploadImg(file,token){
+  function uploadImg(file){
     var ext=file.name.split(".").pop()||"jpg";
     var name=Date.now()+"_"+Math.random().toString(36).slice(2,8)+"."+ext;
     return fetch(SB_URL+"/storage/v1/object/questions/"+name,{
       method:"POST",
-      headers:{"apikey":SB_KEY,"Authorization":"Bearer "+token,"Content-Type":file.type,"x-upsert":"true"},
+      headers:{"apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY,"Content-Type":file.type,"x-upsert":"true"},
       body:file
     }).then(function(r){
       if(!r.ok)throw new Error("Upload failed");
@@ -154,7 +135,7 @@ function Admin(){
     console.log("SUBMIT - imgFile:",theFile,"imgP:",f.imgP?f.imgP.substring(0,50):"null");
     if(theFile){
       console.log("UPLOADING:",theFile.name,theFile.size,theFile.type);
-      imgPromise=uploadImg(theFile,tok).then(function(url){
+      imgPromise=uploadImg(theFile).then(function(url){
         console.log("UPLOAD OK:",url);
         imgFileRef.current=null;
         return url;
@@ -169,15 +150,15 @@ function Admin(){
       var qData={text:f.text.trim(),text_en:f.text_en.trim()||null,difficulty:f.diff,category_id:f.cat_id,explanation:f.expl.trim(),explanation_en:f.expl_en.trim()||null,active:f.active,image_url:imageUrl};
       var p;
       if(ei){
-        p=sbPatch("questions?id=eq."+ei,qData,tok)
-          .then(function(){return sbDel("answers?question_id=eq."+ei,tok);})
-          .then(function(){return sbPost("answers",clean.map(function(a){return{question_id:ei,text:a.t.trim(),text_en:a.te.trim()||null,is_correct:a.ok};}),tok);})
+        p=sbPatch("questions?id=eq."+ei,qData)
+          .then(function(){return sbDel("answers?question_id=eq."+ei);})
+          .then(function(){return sbPost("answers",clean.map(function(a){return{question_id:ei,text:a.t.trim(),text_en:a.te.trim()||null,is_correct:a.ok};}));})
           .then(function(){showT("Modifi\u00e9e");});
       } else {
-        p=sbPost("questions",qData,tok)
+        p=sbPost("questions",qData)
           .then(function(qRes){
             if(qRes&&qRes.length>0){
-              return sbPost("answers",clean.map(function(a){return{question_id:qRes[0].id,text:a.t.trim(),text_en:a.te.trim()||null,is_correct:a.ok};}),tok);
+              return sbPost("answers",clean.map(function(a){return{question_id:qRes[0].id,text:a.t.trim(),text_en:a.te.trim()||null,is_correct:a.ok};}));
             }
           })
           .then(function(){showT("Ajout\u00e9e");});
@@ -197,22 +178,22 @@ function Admin(){
   }
 
   function toggleActive(q){
-    sbPatch("questions?id=eq."+q.id,{active:!q.active},tok).then(function(){reload();});
+    sbPatch("questions?id=eq."+q.id,{active:!q.active}).then(function(){reload();});
   }
 
   function del(id){
-    sbDel("answers?question_id=eq."+id,tok)
-      .then(function(){return sbDel("questions?id=eq."+id,tok);})
+    sbDel("answers?question_id=eq."+id)
+      .then(function(){return sbDel("questions?id=eq."+id);})
       .then(function(){sCf(null);reload();showT("Supprim\u00e9e");});
   }
 
   function dup(q){
-    sbPost("questions",{text:q.text+" (copie)",difficulty:q.difficulty,category_id:q.category_id,explanation:q.explanation,active:true},tok)
+    sbPost("questions",{text:q.text+" (copie)",difficulty:q.difficulty,category_id:q.category_id,explanation:q.explanation,active:true})
       .then(function(qRes){
         if(qRes&&qRes.length>0){
           var newId=qRes[0].id;
           var ans=(q.answers||[]).map(function(a){return{question_id:newId,text:a.text,is_correct:a.is_correct};});
-          return sbPost("answers",ans,tok);
+          return sbPost("answers",ans);
         }
       })
       .then(function(){reload();showT("Dupliqu\u00e9e");});
@@ -262,13 +243,11 @@ function Admin(){
     h("div",{style:{width:"100%",maxWidth:400,padding:"0 24px",display:"flex",flexDirection:"column",justifyContent:"center",minHeight:"100vh"}},
       h("div",{style:{fontSize:11,fontWeight:500,letterSpacing:"0.35em",textTransform:"uppercase",marginBottom:8}},"Horoquest"),
       h("div",{style:{fontSize:24,fontWeight:300,marginBottom:40}},"Admin."),
-      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"EMAIL"),
-      h("input",{type:"email",value:le,onChange:function(e){sLe(e.target.value);},placeholder:"admin@horoquest.com",autoFocus:true,style:{width:"100%",padding:"14px 0",background:"transparent",border:"none",borderBottom:"1px solid "+C.lt,color:C.fg,fontSize:15,fontFamily:font,marginBottom:20}}),
       h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"MOT DE PASSE"),
-      h("input",{type:"password",value:lp,onChange:function(e){sLp(e.target.value);},onKeyDown:function(e){if(e.key==="Enter")doLogin();},placeholder:"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",style:{width:"100%",padding:"14px 0",background:"transparent",border:"none",borderBottom:"1px solid "+C.lt,color:C.fg,fontSize:15,fontFamily:font}}),
+      h("input",{type:"password",value:lp,onChange:function(e){sLp(e.target.value);},onKeyDown:function(e){if(e.key==="Enter")doLogin();},placeholder:"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",autoFocus:true,style:{width:"100%",padding:"14px 0",background:"transparent",border:"none",borderBottom:"1px solid "+C.lt,color:C.fg,fontSize:15,fontFamily:font}}),
       lerr&&h("div",{style:{fontSize:12,color:C.acc,marginTop:12}},lerr),
       h("div",{style:{height:24}}),
-      h("button",{onClick:doLogin,disabled:la,style:{width:"100%",padding:"16px 0",background:C.fg,color:C.bg,border:"none",borderRadius:0,fontSize:13,fontWeight:500,letterSpacing:"0.15em",textTransform:"uppercase",cursor:"pointer",fontFamily:font,opacity:la||!le.trim()||!lp.trim()?0.4:1}},la?"Connexion\u2026":"Connexion")));
+      h("button",{onClick:doLogin,style:{width:"100%",padding:"16px 0",background:C.fg,color:C.bg,border:"none",borderRadius:0,fontSize:13,fontWeight:500,letterSpacing:"0.15em",textTransform:"uppercase",cursor:"pointer",fontFamily:font,opacity:!lp.trim()?0.4:1}},"Connexion")));
 
   // LIST
   var listView=h("div",{style:{padding:24}},
