@@ -75,12 +75,12 @@ function Admin(){
       sbGet("daily_stats?order=day.desc&limit=30",tok),
       sbGet("events?select=event,session_id,created_at&order=created_at.desc&limit=500",tok),
       sbGet("profiles?select=id,username,created_at,total_games,xp,level&order=created_at.desc",tok),
-      sbGet("scores?select=score,mode,correct_count,total_questions,is_daily,created_at&order=created_at.desc&limit=200",tok)
+      sbGet("scores?select=score,mode,correct_count,total_questions,is_daily,played_at&order=played_at.desc&limit=200",tok)
     ]).then(function(res){
-      var daily=res[0]&&!res[0].error?res[0]:[];
-      var events=res[1]&&!res[1].error?res[1]:[];
-      var users=res[2]&&!res[2].error?res[2]:[];
-      var scores=res[3]&&!res[3].error?res[3]:[];
+      var daily=res[0]&&!res[0].error&&Array.isArray(res[0])?res[0]:[];
+      var events=res[1]&&!res[1].error&&Array.isArray(res[1])?res[1]:[];
+      var users=res[2]&&!res[2].error&&Array.isArray(res[2])?res[2]:[];
+      var scores=res[3]&&!res[3].error&&Array.isArray(res[3])?res[3]:[];
 
       // Today's stats
       var today=new Date().toISOString().split("T")[0];
