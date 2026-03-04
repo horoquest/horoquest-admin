@@ -62,10 +62,61 @@ function Admin(){
   var _le=useState(""),le=_le[0],sLe=_le[1];
   var _lerr=useState(null),lerr=_lerr[0],sLerr=_lerr[1];
   var _la=useState(false),la=_la[0],sLa=_la[1];
+  var _an=useState(null),analytics=_an[0],sAn=_an[1];
+  var _anl=useState(false),anLoading=_anl[0],sAnl=_anl[1];
   var fRef=useRef(null);
   var imgFileRef=useRef(null);
 
   function showT(m,err){sT({m:m,e:err});setTimeout(function(){sT(null);},2500);}
+
+  function loadAnalytics(){
+    sAnl(true);
+    Promise.all([
+      sbGet("daily_stats?order=day.desc&limit=30",tok),
+      sbGet("events?select=event,session_id,created_at&order=created_at.desc&limit=500",tok),
+      sbGet("profiles?select=id,username,created_at,total_games,xp,level&order=created_at.desc",tok),
+      sbGet("scores?select=score,mode,correct_count,total_questions,is_daily,created_at&order=created_at.desc&limit=200",tok)
+    ]).then(function(res){
+      var daily=res[0]&&!res[0].error?res[0]:[];
+      var events=res[1]&&!res[1].error?res[1]:[];
+      var users=res[2]&&!res[2].error?res[2]:[];
+      var scores=res[3]&&!res[3].error?res[3]:[];
+
+      // Today's stats
+      var today=new Date().toISOString().split("T")[0];
+      var todayEvents=events.filter(function(e){return e.created_at&&e.created_at.startsWith(today);});
+      var todaySessions=[];
+      todayEvents.forEach(function(e){if(e.session_id&&todaySessions.indexOf(e.session_id)===-1)todaySessions.push(e.session_id);});
+
+      // Last 7 days
+      var d7=new Date();d7.setDate(d7.getDate()-7);var d7s=d7.toISOString();
+      var week=events.filter(function(e){return e.created_at>=d7s;});
+      var weekSessions=[];
+      week.forEach(function(e){if(e.session_id&&weekSessions.indexOf(e.session_id)===-1)weekSessions.push(e.session_id);});
+
+      // Scores analytics
+      var avgScore=0;var totalGames=scores.length;
+      if(totalGames>0){var sum=0;scores.forEach(function(s){sum+=s.score;});avgScore=Math.round(sum/totalGames);}
+      var modeCount={calibre:0,manufacture:0,haute:0};
+      scores.forEach(function(s){if(modeCount[s.mode]!==undefined)modeCount[s.mode]++;});
+
+      sAn({
+        daily:daily,
+        todayVisitors:todaySessions.length,
+        todayGames:todayEvents.filter(function(e){return e.event==="game_end";}).length,
+        weekVisitors:weekSessions.length,
+        weekGames:week.filter(function(e){return e.event==="game_end";}).length,
+        weekSignups:week.filter(function(e){return e.event==="signup";}).length,
+        weekShares:week.filter(function(e){return e.event==="share";}).length,
+        totalUsers:users.length,
+        avgScore:avgScore,
+        totalGames:totalGames,
+        modeCount:modeCount,
+        recentUsers:users.slice(0,10)
+      });
+      sAnl(false);
+    }).catch(function(e){console.log("Analytics failed",e);sAnl(false);});
+  }
 
   function doLogin(){
     if(!le.trim()||!lp.trim())return;
@@ -241,9 +292,9 @@ function Admin(){
       h("span",{style:{fontSize:11,fontWeight:500,letterSpacing:"0.35em",textTransform:"uppercase"}},"Horoquest"),
       h("span",{style:{fontSize:11,color:C.mid,letterSpacing:"0.1em",marginLeft:12}},"Admin")),
     h("div",{style:{display:"flex",gap:1}},
-      ["list","form","stats"].map(function(tab){
-        var labels={list:"Liste",form:ei?"Modifier":"Ajouter",stats:"Stats"};
-        return h("button",{key:tab,onClick:function(){if(tab==="form"&&v!=="form"){sEi(null);sF(Object.assign(empty(),{cat_id:cats.length>0?cats[0].id:""}));}sV(tab);},style:{padding:"8px 16px",background:v===tab?C.fg:"transparent",color:v===tab?C.bg:C.mid,border:"1px solid "+C.lt,borderRadius:0,fontSize:11,letterSpacing:"0.08em",cursor:"pointer",fontFamily:font}},labels[tab]);
+      ["list","form","stats","analytics"].map(function(tab){
+        var labels={list:"Liste",form:ei?"Modifier":"Ajouter",stats:"Stats",analytics:"Analytics"};
+        return h("button",{key:tab,onClick:function(){if(tab==="form"&&v!=="form"){sEi(null);sF(Object.assign(empty(),{cat_id:cats.length>0?cats[0].id:""}));}if(tab==="analytics")loadAnalytics();sV(tab);},style:{padding:"8px 16px",background:v===tab?C.fg:"transparent",color:v===tab?C.bg:C.mid,border:"1px solid "+(tab==="analytics"?C.acc+"60":C.lt),borderRadius:0,fontSize:11,letterSpacing:"0.08em",cursor:"pointer",fontFamily:font}},labels[tab]);
       }),
       h("button",{onClick:function(){sTok(null);sLe("");sLp("");sQs([]);sCats([]);},style:{padding:"8px 12px",background:"transparent",color:C.acc,border:"1px solid "+C.acc+"40",borderRadius:0,fontSize:11,cursor:"pointer",fontFamily:font,marginLeft:8}},"\u2192")));
 
@@ -369,9 +420,76 @@ function Admin(){
     stats.total<50&&h("div",{style:{padding:"16px 20px",background:C.sub,fontSize:12,color:C.mid,lineHeight:1.6,borderLeft:"2px solid "+C.fg}},stats.total+" questions. Visez 50+.")
   );
 
+  // ANALYTICS
+  var analyticsView=anLoading?loader():!analytics?h("div",{style:{padding:40,textAlign:"center",color:C.mid,fontSize:13}},"Chargement\u2026"):h("div",{style:{padding:24,maxWidth:600,margin:"0 auto"}},
+    h("div",{style:{fontSize:18,fontWeight:400,marginBottom:8}},"Analytics"),
+    h("div",{style:{fontSize:12,color:C.mid,marginBottom:32}},"M\u00e9triques cl\u00e9s pour sponsoring"),
+
+    h("div",{style:{fontSize:11,color:C.acc,letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:12}},"AUJOURD\u2019HUI"),
+    h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",borderTop:"1px solid "+C.lt,borderBottom:"1px solid "+C.lt,marginBottom:24}},
+      [{l:"Visiteurs uniques",v:analytics.todayVisitors},{l:"Parties jou\u00e9es",v:analytics.todayGames}].map(function(s,i){
+        return h("div",{key:i,style:{padding:"16px 0",borderRight:i<1?"1px solid "+C.lt:"none"}},
+          h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:4}},s.l),
+          h("div",{style:{fontSize:32,fontWeight:300}},s.v));})),
+
+    h("div",{style:{fontSize:11,color:C.acc,letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:12}},"7 DERNIERS JOURS"),
+    h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",borderTop:"1px solid "+C.lt,borderBottom:"1px solid "+C.lt,marginBottom:24}},
+      [{l:"Visiteurs",v:analytics.weekVisitors},{l:"Parties",v:analytics.weekGames},{l:"Inscriptions",v:analytics.weekSignups},{l:"Partages",v:analytics.weekShares}].map(function(s,i){
+        return h("div",{key:i,style:{padding:"16px 0",borderRight:i<3?"1px solid "+C.lt:"none"}},
+          h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:4}},s.l),
+          h("div",{style:{fontSize:24,fontWeight:300}},s.v));})),
+
+    h("div",{style:{fontSize:11,color:C.acc,letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:12}},"GLOBAL"),
+    h("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",borderTop:"1px solid "+C.lt,borderBottom:"1px solid "+C.lt,marginBottom:24}},
+      [{l:"Joueurs inscrits",v:analytics.totalUsers},{l:"Parties totales",v:analytics.totalGames},{l:"Score moyen",v:analytics.avgScore}].map(function(s,i){
+        return h("div",{key:i,style:{padding:"16px 0",borderRight:i<2?"1px solid "+C.lt:"none"}},
+          h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:4}},s.l),
+          h("div",{style:{fontSize:24,fontWeight:300}},s.v));})),
+
+    h("div",{style:{fontSize:11,color:C.acc,letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:12}},"PAR MODE"),
+    h("div",{style:{marginBottom:24}},
+      ["calibre","manufacture","haute"].map(function(m){
+        var c=analytics.modeCount[m]||0;var max=Math.max(analytics.modeCount.calibre||1,analytics.modeCount.manufacture||1,analytics.modeCount.haute||1);
+        var labels={calibre:"Calibre",manufacture:"Manufacture",haute:"Haute Horlogerie"};
+        return h("div",{key:m,style:{display:"flex",alignItems:"center",gap:12,marginBottom:8}},
+          h("div",{style:{width:120,fontSize:12,color:C.mid}},labels[m]),
+          h("div",{style:{flex:1,height:4,background:C.sub}},h("div",{style:{width:c>0?(c/max*100)+"%":"0%",height:"100%",background:C.fg}})),
+          h("div",{style:{width:32,textAlign:"right",fontSize:13,fontWeight:500}},c));})),
+
+    analytics.daily&&analytics.daily.length>0&&h("div",null,
+      h("div",{style:{fontSize:11,color:C.acc,letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:12}},"HISTORIQUE JOURNALIER"),
+      h("div",{style:{overflowX:"auto"}},
+        h("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:12}},
+          h("thead",null,h("tr",null,
+            ["Date","Visiteurs","Parties","Inscriptions","Taux compl.","Score moy."].map(function(col,i){
+              return h("th",{key:i,style:{padding:"8px 6px",textAlign:"left",color:C.mid,fontSize:10,letterSpacing:"0.05em",borderBottom:"1px solid "+C.lt,fontWeight:400}},col);}))),
+          h("tbody",null,analytics.daily.slice(0,14).map(function(d,i){
+            return h("tr",{key:i,style:{borderBottom:"1px solid "+C.sub}},
+              h("td",{style:{padding:"8px 6px",fontSize:12}},d.day),
+              h("td",{style:{padding:"8px 6px"}},d.unique_visitors||0),
+              h("td",{style:{padding:"8px 6px"}},d.games_completed||0),
+              h("td",{style:{padding:"8px 6px"}},d.signups||0),
+              h("td",{style:{padding:"8px 6px"}},d.completion_rate?d.completion_rate+"%":"\u2014"),
+              h("td",{style:{padding:"8px 6px"}},d.avg_score||"\u2014"));
+          }))))),
+
+    analytics.recentUsers&&analytics.recentUsers.length>0&&h("div",{style:{marginTop:24}},
+      h("div",{style:{fontSize:11,color:C.acc,letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:12}},"DERNIERS INSCRITS"),
+      analytics.recentUsers.map(function(u,i){
+        return h("div",{key:i,style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+C.sub,fontSize:13}},
+          h("div",null,
+            h("span",{style:{fontWeight:500}},u.username||"Anonyme"),
+            h("span",{style:{color:C.mid,fontSize:11,marginLeft:8}},"Nv."+u.level+" \u00b7 "+u.total_games+" parties")),
+          h("div",{style:{fontSize:11,color:C.mid}},u.created_at?u.created_at.split("T")[0]:""));
+      })),
+
+    h("div",{style:{marginTop:32}},
+      h("button",{onClick:loadAnalytics,style:{width:"100%",padding:"14px 0",background:"transparent",border:"1px solid "+C.lt,borderRadius:0,fontSize:12,cursor:"pointer",fontFamily:font,color:C.mid,letterSpacing:"0.08em"}},"Rafra\u00eechir"))
+  );
+
   return h("div",{style:{minHeight:"100vh",background:C.bg,color:C.fg,fontFamily:font}},
     toastEl,cfEl,header,
-    v==="list"?listView:v==="form"?formView:statsView);
+    v==="list"?listView:v==="form"?formView:v==="analytics"?analyticsView:statsView);
 }
 
 ReactDOM.render(h(Admin), document.getElementById("root"));
