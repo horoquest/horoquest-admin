@@ -259,13 +259,15 @@ function Admin(){
   }
 
   function del(id){
+    console.log("[DEL] start id="+id+" tok="+(tok?"ok":"NULL"));
     sbDel("answers?question_id=eq."+id,tok)
-      .then(function(){return sbDel("questions?id=eq."+id,tok);})
+      .then(function(r){console.log("[DEL] answers deleted:",r);return sbDel("questions?id=eq."+id,tok);})
       .then(function(rows){
+        console.log("[DEL] question deleted:",rows);
         if(!rows||rows.length===0){showT("Suppression refus\u00e9e (RLS)",true);return;}
         sCf(null);reload();showT("Supprim\u00e9e");
       })
-      .catch(function(e){showT("Erreur: "+e.message,true);});
+      .catch(function(e){console.log("[DEL] error:",e);showT("Erreur: "+e.message,true);});
   }
 
   function dup(q){
