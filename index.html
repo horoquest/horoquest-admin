@@ -31,10 +31,11 @@ var ADMIN_EMAIL = "joshua.grillet@proton.me";
 
 function mkH(token){return{"apikey":SB_KEY,"Content-Type":"application/json","Authorization":"Bearer "+(token||SB_KEY)};}
 
-function sbGet(path,token){return fetch(SB_URL+"/rest/v1/"+path,{headers:mkH(token)}).then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||e.error||"Erreur "+r.status);});return r.json();});}
-function sbPost(path,body,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"POST",headers:Object.assign(mkH(token),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||e.error||"Erreur "+r.status);});return r.json();});}
-function sbPatch(path,body,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"PATCH",headers:Object.assign(mkH(token),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||e.error||"Erreur "+r.status);});return r.json();});}
-function sbDel(path,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"DELETE",headers:Object.assign(mkH(token),{"Prefer":"return=representation"})}).then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||e.error||"Erreur "+r.status);});return r.json();});}
+function sbRes(r){if(!r.ok)return r.json().catch(function(){return{};}).then(function(e){throw new Error(e.message||e.error||"Erreur "+r.status);});return r.json();}
+function sbGet(path,token){return fetch(SB_URL+"/rest/v1/"+path,{headers:mkH(token)}).then(sbRes);}
+function sbPost(path,body,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"POST",headers:Object.assign(mkH(token),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(sbRes);}
+function sbPatch(path,body,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"PATCH",headers:Object.assign(mkH(token),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(sbRes);}
+function sbDel(path,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"DELETE",headers:Object.assign(mkH(token),{"Prefer":"return=representation"})}).then(sbRes);}
 function sbLoginPw(email,pw){return fetch(SB_URL+"/auth/v1/token?grant_type=password",{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email:email,password:pw})}).then(function(r){return r.json();});}
 
 var DIFFS=[{v:1,l:"Tr\u00e8s facile",m:"Calibre"},{v:2,l:"Facile",m:"Calibre"},{v:3,l:"Moyen",m:"Manufacture"},{v:4,l:"Difficile",m:"Manufacture"},{v:5,l:"Expert",m:"Haute Horlogerie"}];
