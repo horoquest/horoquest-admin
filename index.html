@@ -31,9 +31,9 @@ var ADMIN_EMAIL = "joshua.grillet@proton.me";
 
 function mkH(token){return{"apikey":SB_KEY,"Content-Type":"application/json","Authorization":"Bearer "+(token||SB_KEY)};}
 
-function sbGet(path,token){return fetch(SB_URL+"/rest/v1/"+path,{headers:mkH(token)}).then(function(r){return r.json();});}
-function sbPost(path,body,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"POST",headers:Object.assign(mkH(token),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(function(r){return r.json();});}
-function sbPatch(path,body,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"PATCH",headers:Object.assign(mkH(token),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(function(r){return r.json();});}
+function sbGet(path,token){return fetch(SB_URL+"/rest/v1/"+path,{headers:mkH(token)}).then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||e.error||"Erreur "+r.status);});return r.json();});}
+function sbPost(path,body,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"POST",headers:Object.assign(mkH(token),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||e.error||"Erreur "+r.status);});return r.json();});}
+function sbPatch(path,body,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"PATCH",headers:Object.assign(mkH(token),{"Prefer":"return=representation"}),body:JSON.stringify(body)}).then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||e.error||"Erreur "+r.status);});return r.json();});}
 function sbDel(path,token){return fetch(SB_URL+"/rest/v1/"+path,{method:"DELETE",headers:Object.assign(mkH(token),{"Prefer":"return=representation"})}).then(function(r){if(!r.ok)return r.json().then(function(e){throw new Error(e.message||e.error||"Erreur "+r.status);});return r.json();});}
 function sbLoginPw(email,pw){return fetch(SB_URL+"/auth/v1/token?grant_type=password",{method:"POST",headers:{"apikey":SB_KEY,"Content-Type":"application/json"},body:JSON.stringify({email:email,password:pw})}).then(function(r){return r.json();});}
 
@@ -209,11 +209,8 @@ function Admin(){
 
     var imgPromise;
     var theFile=imgFileRef.current;
-    console.log("SUBMIT - imgFile:",theFile,"imgP:",f.imgP?f.imgP.substring(0,50):"null");
     if(theFile){
-      console.log("UPLOADING:",theFile.name,theFile.size,theFile.type);
       imgPromise=uploadImg(theFile).then(function(url){
-        console.log("UPLOAD OK:",url);
         imgFileRef.current=null;
         return url;
       });
@@ -269,11 +266,11 @@ function Admin(){
   }
 
   function dup(q){
-    sbPost("questions",{text:q.text+" (copie)",difficulty:q.difficulty,category_id:q.category_id,explanation:q.explanation,active:true},tok)
+    sbPost("questions",{text:q.text+" (copie)",text_en:q.text_en||null,difficulty:q.difficulty,category_id:q.category_id,explanation:q.explanation||null,explanation_en:q.explanation_en||null,image_url:q.image_url||null,active:true},tok)
       .then(function(qRes){
         if(qRes&&qRes.length>0){
           var newId=qRes[0].id;
-          var ans=(q.answers||[]).map(function(a){return{question_id:newId,text:a.text,is_correct:a.is_correct};});
+          var ans=(q.answers||[]).map(function(a){return{question_id:newId,text:a.text,text_en:a.text_en||null,is_correct:a.is_correct};});
           return sbPost("answers",ans,tok);
         }
       })
