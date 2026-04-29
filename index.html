@@ -45,6 +45,26 @@ var inpS={width:"100%",padding:"12px 0",background:"transparent",border:"none",b
 var selS={padding:"10px 12px",background:C.card,border:"1px solid "+C.lt,borderRadius:0,color:C.fg,fontSize:12,fontFamily:font};
 
 function empty(){return{text:"",text_en:"",diff:1,cat_id:"",expl:"",expl_en:"",imgP:null,answers:[{t:"",te:"",ok:true},{t:"",te:"",ok:false},{t:"",te:"",ok:false},{t:"",te:"",ok:false}],active:true};}
+function emptyTheme(){return{name:"",name_en:"",slug_fr:"",slug_en:"",description:"",description_en:"",imgP:null,sort_order:100,is_active:false,filter_type:"tag",filter_value:""};}
+
+var SUGGEST_RULES={
+  "rolex":/\b(rolex|submariner|daytona|gmt[- ]master|sea[- ]dweller|cosmograph|explorer|day[- ]?date|datejust|wilsdorf|deepsea|milgauss|yacht[- ]?master|air[- ]?king|oyster\b|paul newman)\b/i,
+  "omega":/\b(omega|speedmaster|seamaster|de\s+ville|constellation|brandt\b|moonwatch|planet ocean|aqua terra|railmaster|dark side of the moon)\b/i,
+  "patek-philippe":/\b(patek(?:\s+philippe)?|calatrava|nautilus|aquanaut|grandmaster chime|antoine norbert|jean[- ]adrien philippe)\b/i,
+  "breguet":/\b(breguet|abraham[- ]louis|spiral breguet|montre perp[ée]tuelle|marie[- ]antoinette|tact)\b/i,
+  "conquete-spatiale":/\b(lune\b|moon\b|nasa|apollo|astronaute|spatial|space\b|orbit|gemini|mercury|cosmonaute|gagarine|armstrong|aldrin|cernan|skylab|iss\b|esa\b)\b/i,
+  "icones-design":/\b(nautilus|royal oak|reverso|tank\b|monaco|carrera|santos\b|navitimer|big bang|ingenieur|polerouter|el primero)\b/i,
+  "plongee":/\b(plong[ée]|diver|fifty fathoms|submariner|sea[- ]dweller|aquaracer|monster|turtle|[ée]tanch|profondeur|water resistance|saturation|cousteau|comex)\b/i,
+  "aviation":/\b(pilot|aviation|navitimer|flight|aviateur|cockpit|lindbergh|wright|breitling.*nav|hour angle|tour du monde)\b/i,
+  "chronographe":/\b(chronograph|chrono\b|el primero|caliber 11|valjoux|7750|lemania|monaco|carrera|navitimer|daytona|rattrapante)\b/i,
+  "crise-quartz-70s":/\b(crise du quartz|quartz crisis|seventies|ann[ée]es 70|1970s|swatch|hayek\b|asuag|ssih|seiko astron|beta 21)\b/i,
+  "people":/\b(paul newman|steve mcqueen|brando|stallone|elvis|kennedy|john lennon|obama|cousteau|james bond|eric clapton|jay[- ]?z|john mayer|ellen degeneres)\b/i,
+  "militaire":/\b(militaire|military|army|navy|marine nationale|\bMN\b|dirty dozen|G[- ]?10|A[- ]?11|GG[- ]?W|W10\b|seconde guerre|world war|troupe|commando|nageur de combat)\b/i,
+  "independants":/\b(f\.?\s?p\.?\s?journe|fran[çc]ois[- ]paul journe|philippe dufour|george daniels|mb&f|de bethune|greubel forsey|akrivia|voutilainen|laurent ferrier|vianney halter|romain gauthier|h\. moser|moser & cie|urban j[üu]rgensen|gr[öo]nefeld|david candaux|rexhep rexhepi|simon brette|bernhard lederer|theo auffret|charles frodsham|urwerk|ressence|atelier de chronom[ée]trie)\b/i,
+  "complications":/\b(tourbillon|quanti[èe]me perp[ée]tuel|perpetual calendar|r[ée]p[ée]tition minutes|minute repeater|grande sonnerie|petite sonnerie|[ée]quation du temps|equation of time|rattrapante|split[- ]seconds|fus[ée]e|micro[- ]rotor|squelett?e?|jumping hour|heure sautante|carrousel)\b/i,
+  "scandales":/\b(scandale|fraude|faux\b|contrefa|copie\b|cambriolage|escroquer|arnaque|d[ée]tourn|panama papers|jho low|hatton garden|patrick heiniger)\b/i,
+  "identification-visuelle":/\b(reconnais|identifier|identifie\b|visuel|spot the watch|quelle est cette)\b/i
+};
 function loader(){return h("div",{style:{display:"flex",justifyContent:"center",padding:40}},h("div",{style:{width:20,height:20,border:"2px solid "+C.lt,borderTopColor:C.fg,borderRadius:"50%",animation:"spin 0.6s linear infinite"}}));}
 
 function Admin(){
@@ -68,8 +88,15 @@ function Admin(){
   var _anl=useState(false),anLoading=_anl[0],sAnl=_anl[1];
   var _pv=useState(null),pvQ=_pv[0],sPv=_pv[1];
   var _menuOpen=useState(false),menuOpen=_menuOpen[0],sMenuOpen=_menuOpen[1];
+  var _th=useState([]),th=_th[0],sTh=_th[1];
+  var _tf=useState(emptyTheme()),tf=_tf[0],sTf=_tf[1];
+  var _tei=useState(null),tei=_tei[0],sTei=_tei[1];
+  var _tgIdx=useState(0),tgIdx=_tgIdx[0],sTgIdx=_tgIdx[1];
+  var _tgFilter=useState("untagged"),tgFilter=_tgFilter[0],sTgFilter=_tgFilter[1];
+  var _tgPicks=useState([]),tgPicks=_tgPicks[0],sTgPicks=_tgPicks[1];
   var fRef=useRef(null);
   var imgFileRef=useRef(null);
+  var tImgFileRef=useRef(null);
 
   useEffect(function(){if(tok&&qs.length===0)loadData(tok);},[]);
 
@@ -145,9 +172,10 @@ function Admin(){
     sLd(true);
     Promise.all([
       sbGet("categories?order=name",tk),
-      sbGet("questions?select=id,text,text_en,difficulty,explanation,explanation_en,image_url,active,category_id,categories(name,slug),answers(id,text,text_en,is_correct)&order=created_at.desc",tk)
+      sbGet("questions?select=id,text,text_en,difficulty,explanation,explanation_en,image_url,active,category_id,theme_slugs,categories(name,slug),answers(id,text,text_en,is_correct)&order=created_at.desc",tk),
+      sbGet("themes?order=sort_order",tk)
     ]).then(function(results){
-      var c=results[0],q=results[1];
+      var c=results[0],q=results[1],t2=results[2];
       // Check for auth errors (expired JWT, invalid token)
       if((c&&c.message)||(q&&q.message)||(c&&c.code)||(q&&q.code)){
         console.log("Auth error, clearing session",c,q);
@@ -155,14 +183,21 @@ function Admin(){
       }
       if(c&&Array.isArray(c)&&c.length>0)sCats(c);
       if(q&&Array.isArray(q)&&!q.error)sQs(q);
+      if(t2&&Array.isArray(t2)&&!t2.error)sTh(t2);
       sLd(false);
     }).catch(function(e){console.log("Load failed",e);clearSession();sLd(false);});
   }
 
   function reload(){
-    sbGet("questions?select=id,text,text_en,difficulty,explanation,explanation_en,image_url,active,category_id,categories(name,slug),answers(id,text,text_en,is_correct)&order=created_at.desc",tok).then(function(q){
+    sbGet("questions?select=id,text,text_en,difficulty,explanation,explanation_en,image_url,active,category_id,theme_slugs,categories(name,slug),answers(id,text,text_en,is_correct)&order=created_at.desc",tok).then(function(q){
       if(q&&Array.isArray(q)&&!q.error)sQs(q);
       else if(q&&(q.message||q.code))clearSession();
+    });
+  }
+
+  function loadThemes(){
+    sbGet("themes?order=sort_order",tok).then(function(r){
+      if(r&&Array.isArray(r)&&!r.error)sTh(r);
     });
   }
 
@@ -173,6 +208,101 @@ function Admin(){
     var r=new FileReader();r.onload=function(ev){sF(function(p){return Object.assign({},p,{imgP:ev.target.result});});};r.readAsDataURL(file);
   }
   function rmImg(){imgFileRef.current=null;sF(function(p){return Object.assign({},p,{imgP:null});});if(fRef.current)fRef.current.value="";}
+
+  function handleThemeImg(e){
+    var file=e.target.files&&e.target.files[0];if(!file)return;
+    if(file.size>2*1024*1024){showT("Max 2 Mo",true);return;}
+    tImgFileRef.current=file;
+    var r=new FileReader();r.onload=function(ev){sTf(function(p){return Object.assign({},p,{imgP:ev.target.result});});};r.readAsDataURL(file);
+  }
+  function rmThemeImg(){tImgFileRef.current=null;sTf(function(p){return Object.assign({},p,{imgP:null});});}
+
+  function uploadThemeImg(file){
+    var ext=file.name.split(".").pop()||"jpg";
+    var name="theme_"+Date.now()+"_"+Math.random().toString(36).slice(2,8)+"."+ext;
+    return fetch(SB_URL+"/storage/v1/object/questions/"+name,{
+      method:"POST",
+      headers:{"apikey":SB_KEY,"Authorization":"Bearer "+(tok||SB_KEY),"Content-Type":file.type,"x-upsert":"true"},
+      body:file
+    }).then(function(r){
+      if(!r.ok)throw new Error("Upload failed");
+      return SB_URL+"/storage/v1/object/public/questions/"+name;
+    });
+  }
+
+  function startEditTheme(t){
+    tImgFileRef.current=null;
+    sTei(t.id);
+    sTf({
+      name:t.name||"",name_en:t.name_en||"",
+      slug_fr:t.slug_fr||t.slug||"",slug_en:t.slug_en||"",
+      description:t.description||"",description_en:t.description_en||"",
+      imgP:t.image_url||null,
+      sort_order:t.sort_order||100,
+      is_active:t.is_active!==false,
+      filter_type:t.filter_type||"tag",
+      filter_value:t.filter_value||t.slug_fr||t.slug||""
+    });
+    sV("themeForm");
+  }
+
+  function submitTheme(){
+    if(!tf.name||!tf.slug_fr){showT("Nom et slug FR requis",true);return;}
+    sSv(true);
+    var theFile=tImgFileRef.current;
+    var imgPromise=theFile
+      ? uploadThemeImg(theFile).then(function(url){tImgFileRef.current=null;return url;})
+      : Promise.resolve(tf.imgP&&tf.imgP.indexOf("data:")!==0?tf.imgP:null);
+
+    imgPromise.then(function(imageUrl){
+      var body={
+        name:tf.name,name_en:tf.name_en||tf.name,
+        slug:tf.slug_fr,
+        slug_fr:tf.slug_fr,slug_en:tf.slug_en||tf.slug_fr,
+        description:tf.description||null,description_en:tf.description_en||null,
+        image_url:imageUrl,
+        sort_order:parseInt(tf.sort_order)||100,
+        is_active:!!tf.is_active,
+        filter_type:tf.filter_type||"tag",
+        filter_value:tf.filter_value||tf.slug_fr
+      };
+      var p=tei
+        ? sbPatch("themes?id=eq."+tei,body,tok)
+        : sbPost("themes",body,tok);
+      p.then(function(){
+        loadThemes();sTf(emptyTheme());sTei(null);sV("themes");sSv(false);
+        showT(tei?"Collection modifiée":"Collection créée");
+      }).catch(function(e){showT("Erreur: "+(e&&e.message?e.message:String(e)),true);sSv(false);});
+    }).catch(function(e){showT("Erreur upload: "+(e&&e.message?e.message:String(e)),true);sSv(false);});
+  }
+
+  function toggleThemeActive(t){
+    sbPatch("themes?id=eq."+t.id,{is_active:!t.is_active},tok).then(function(){loadThemes();});
+  }
+
+  function suggestTags(q){
+    if(!q)return[];
+    var txt=(q.text||"")+" "+(q.explanation||"")+" "+(q.text_en||"")+" "+(q.explanation_en||"");
+    var picks=[];
+    Object.keys(SUGGEST_RULES).forEach(function(slug){
+      if(SUGGEST_RULES[slug].test(txt))picks.push(slug);
+    });
+    var idCat=(cats.find(function(c){return c.slug==="identification";})||{}).id;
+    if(idCat&&q.category_id===idCat&&picks.indexOf("identification-visuelle")<0)picks.push("identification-visuelle");
+    return picks;
+  }
+
+  function saveTags(q,picks,advance){
+    if(!q)return Promise.resolve();
+    sSv(true);
+    return sbPatch("questions?id=eq."+q.id,{theme_slugs:picks},tok)
+      .then(function(){
+        sQs(function(prev){return prev.map(function(x){return x.id===q.id?Object.assign({},x,{theme_slugs:picks}):x;});});
+        sSv(false);
+        if(advance)showT("Tagué ✓");
+      })
+      .catch(function(e){showT("Erreur: "+(e&&e.message?e.message:String(e)),true);sSv(false);});
+  }
 
   function setAns(i,field,val){
     sF(function(p){var ans=p.answers.map(function(a,j){
@@ -339,7 +469,7 @@ function Admin(){
   ):null;
 
   // Header
-  var navLabels={list:"Liste",form:ei?"Modifier":"Ajouter",stats:"Stats",analytics:"Analytics"};
+  var navLabels={list:"Questions",form:ei?"Modifier":"Ajouter",themes:"Collections",themeForm:tei?"Modifier collection":"Nouvelle collection",tagging:"Tagging",stats:"Stats",analytics:"Analytics"};
   var header=h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 24px",borderBottom:"1px solid "+C.lt,position:"sticky",top:0,background:C.bg,zIndex:10}},
     h("div",null,
       h("span",{style:{fontSize:11,fontWeight:500,letterSpacing:"0.35em",textTransform:"uppercase"}},"Horoquest"),
@@ -350,8 +480,8 @@ function Admin(){
           navLabels[v]||"Menu",
           h("span",{style:{fontSize:9,transform:menuOpen?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s",display:"inline-block"}},"\u25BC")),
         menuOpen&&h("div",{style:{position:"absolute",top:"100%",right:0,marginTop:4,background:C.card,border:"1px solid "+C.lt,boxShadow:"0 4px 12px rgba(0,0,0,0.08)",zIndex:20,minWidth:160,animation:"reveal 0.15s"}},
-          ["list","form","stats","analytics"].map(function(tab){
-            return h("button",{key:tab,onClick:function(){if(tab==="form"&&v!=="form"){sEi(null);sF(Object.assign(empty(),{cat_id:cats.length>0?cats[0].id:""}));}if(tab==="analytics")loadAnalytics();sV(tab);sMenuOpen(false);},style:{display:"block",width:"100%",padding:"12px 16px",background:v===tab?C.sub:"transparent",color:v===tab?C.fg:C.mid,border:"none",borderBottom:"1px solid "+C.sub,fontSize:12,cursor:"pointer",fontFamily:font,textAlign:"left",letterSpacing:"0.05em"}},navLabels[tab]);
+          ["list","form","themes","tagging","stats","analytics"].map(function(tab){
+            return h("button",{key:tab,onClick:function(){if(tab==="form"&&v!=="form"){sEi(null);sF(Object.assign(empty(),{cat_id:cats.length>0?cats[0].id:""}));}if(tab==="analytics")loadAnalytics();if(tab==="themes")loadThemes();if(tab==="tagging"){loadThemes();sTgIdx(0);var firstUntagged=qs.filter(function(q){return q.active&&(!q.theme_slugs||q.theme_slugs.length===0);})[0];if(firstUntagged)sTgPicks(suggestTags(firstUntagged));else sTgPicks([]);}sV(tab);sMenuOpen(false);},style:{display:"block",width:"100%",padding:"12px 16px",background:v===tab?C.sub:"transparent",color:v===tab?C.fg:C.mid,border:"none",borderBottom:"1px solid "+C.sub,fontSize:12,cursor:"pointer",fontFamily:font,textAlign:"left",letterSpacing:"0.05em"}},navLabels[tab]);
           }),
           h("button",{onClick:function(){clearSession();sMenuOpen(false);},style:{display:"block",width:"100%",padding:"12px 16px",background:"transparent",color:C.acc,border:"none",fontSize:12,cursor:"pointer",fontFamily:font,textAlign:"left",letterSpacing:"0.05em"}},"D\u00e9connexion"))),
       menuOpen&&h("div",{onClick:function(){sMenuOpen(false);},style:{position:"fixed",inset:0,zIndex:9}})));
@@ -546,9 +676,184 @@ function Admin(){
       h("button",{onClick:loadAnalytics,style:{width:"100%",padding:"14px 0",background:"transparent",border:"1px solid "+C.lt,borderRadius:0,fontSize:12,cursor:"pointer",fontFamily:font,color:C.mid,letterSpacing:"0.08em"}},"Rafra\u00eechir"))
   );
 
+  // THEMES (collections)
+  var themesView=h("div",{style:{padding:24}},
+    h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,gap:8,flexWrap:"wrap"}},
+      h("div",{style:{fontSize:11,color:C.mid}},th.length+" collection"+(th.length>1?"s":"")+" \u00b7 "+th.filter(function(x){return x.is_active;}).length+" active"+(th.filter(function(x){return x.is_active;}).length>1?"s":"")),
+      h("button",{onClick:function(){sTei(null);sTf(emptyTheme());sV("themeForm");},style:{padding:"8px 14px",background:C.fg,color:C.bg,border:"none",borderRadius:0,fontSize:11,letterSpacing:"0.08em",cursor:"pointer",fontFamily:font}},"+ NOUVELLE")),
+    th.map(function(t,i){
+      var slug=t.slug_fr||t.slug||"";
+      var qCount=(qs||[]).filter(function(q){return Array.isArray(q.theme_slugs)&&q.theme_slugs.indexOf(slug)>=0;}).length;
+      var isLegacy=t.filter_type==="category";
+      return h("div",{key:t.id,style:{display:"flex",gap:12,padding:"14px 0",borderBottom:"1px solid "+C.sub,opacity:t.is_active?1:0.5,animation:"reveal 0.15s ease "+(i*0.02)+"s both"}},
+        h("div",{style:Object.assign({width:48,height:48,flexShrink:0,border:"1px solid "+C.lt,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,color:C.mid},t.image_url?{background:"url("+t.image_url+") center/cover"}:{background:C.sub})},!t.image_url&&(t.icon||"\u25a1")),
+        h("div",{style:{flex:1,minWidth:0}},
+          h("div",{style:{display:"flex",gap:8,alignItems:"center",marginBottom:2,flexWrap:"wrap"}},
+            h("span",{style:{fontSize:11,color:C.mid}},"#"+(t.sort_order||0)),
+            !t.is_active&&h("span",{style:{fontSize:10,color:C.acc,fontWeight:500}},"INACTIVE"),
+            isLegacy&&h("span",{style:{fontSize:10,color:C.mid,letterSpacing:"0.08em"}},"LEGACY"),
+            !t.image_url&&!isLegacy&&h("span",{style:{fontSize:10,color:C.acc,fontWeight:500}},"SANS IMAGE")),
+          h("div",{style:{fontSize:14,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},t.name),
+          h("div",{style:{fontSize:11,color:C.mid}},slug+" \u00b7 "+qCount+" question"+(qCount>1?"s":""))),
+        h("div",{style:{display:"flex",gap:4,alignItems:"flex-start",flexShrink:0,flexWrap:"wrap"}},
+          h("button",{onClick:function(){startEditTheme(t);},style:{padding:"6px 10px",background:"transparent",border:"1px solid "+C.lt,borderRadius:0,fontSize:11,cursor:"pointer",fontFamily:font,color:C.mid}},"Mod."),
+          h("button",{onClick:function(){toggleThemeActive(t);},style:{padding:"6px 10px",background:"transparent",border:"1px solid "+(t.is_active?C.mid:C.lt),borderRadius:0,fontSize:11,cursor:"pointer",fontFamily:font,color:t.is_active?C.fg:C.mid}},t.is_active?"On":"Off"))
+      );
+    }),
+    th.length===0&&h("div",{style:{textAlign:"center",padding:40,color:C.mid,fontSize:13}},"Aucune collection.")
+  );
+
+  // THEME FORM
+  var themeFormView=h("div",{style:{padding:24,maxWidth:480,margin:"0 auto"}},
+    h("div",{style:{fontSize:18,fontWeight:400,marginBottom:32}},tei?"Modifier la collection":"Nouvelle collection"),
+
+    h("div",{style:{marginBottom:24}},
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"NOM (FR)"),
+      h("input",{value:tf.name,onChange:function(e){sTf(function(p){return Object.assign({},p,{name:e.target.value});});},placeholder:"Ex : Conqu\u00eate spatiale",style:Object.assign({},inpS,{border:"1px solid "+C.lt,padding:14})}),
+      h("div",{style:{fontSize:11,color:C.acc,letterSpacing:"0.08em",marginBottom:6,marginTop:12}},"NOM \u2014 EN"),
+      h("input",{value:tf.name_en,onChange:function(e){sTf(function(p){return Object.assign({},p,{name_en:e.target.value});});},placeholder:"Ex : Space Conquest",style:Object.assign({},inpS,{border:"1px solid "+C.acc+"40",padding:14})})),
+
+    h("div",{style:{marginBottom:24}},
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"SLUG FR (URL : /fr/c/...)"),
+      h("input",{value:tf.slug_fr,onChange:function(e){sTf(function(p){return Object.assign({},p,{slug_fr:e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,"-")});});},placeholder:"conquete-spatiale",style:Object.assign({},inpS,{border:"1px solid "+C.lt,padding:14,fontFamily:"monospace",fontSize:13})}),
+      h("div",{style:{fontSize:11,color:C.acc,letterSpacing:"0.08em",marginBottom:6,marginTop:12}},"SLUG EN (URL : /en/c/...)"),
+      h("input",{value:tf.slug_en,onChange:function(e){sTf(function(p){return Object.assign({},p,{slug_en:e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,"-")});});},placeholder:"space-conquest",style:Object.assign({},inpS,{border:"1px solid "+C.acc+"40",padding:14,fontFamily:"monospace",fontSize:13})}),
+      tei&&h("div",{style:{fontSize:11,color:C.mid,marginTop:8}},"\u26a0\ufe0f Modifier le slug FR cassera les questions tagu\u00e9es avec l'ancien.")),
+
+    h("div",{style:{marginBottom:24}},
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"DESCRIPTION (FR)"),
+      h("textarea",{value:tf.description,onChange:function(e){sTf(function(p){return Object.assign({},p,{description:e.target.value});});},rows:2,placeholder:"Une phrase qui donne envie de jouer.",style:Object.assign({},inpS,{border:"1px solid "+C.lt,padding:14,minHeight:60})}),
+      h("div",{style:{fontSize:11,color:C.acc,letterSpacing:"0.08em",marginBottom:6,marginTop:12}},"DESCRIPTION \u2014 EN"),
+      h("textarea",{value:tf.description_en,onChange:function(e){sTf(function(p){return Object.assign({},p,{description_en:e.target.value});});},rows:2,placeholder:"English description.",style:Object.assign({},inpS,{border:"1px solid "+C.acc+"40",padding:14,minHeight:60,fontSize:13})})),
+
+    h("div",{style:{marginBottom:24}},
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"IMAGE DE COUVERTURE"),
+      tf.imgP?h("div",{style:{position:"relative",marginBottom:8}},
+        h("img",{src:tf.imgP,style:{width:"100%",maxHeight:200,objectFit:"cover",border:"1px solid "+C.lt}}),
+        h("button",{onClick:rmThemeImg,style:{position:"absolute",top:8,right:8,padding:"6px 10px",background:C.bg,border:"1px solid "+C.lt,borderRadius:0,fontSize:11,cursor:"pointer",fontFamily:font,color:C.acc}},"Retirer")):
+        h("label",{style:{display:"block",padding:"24px",border:"1px dashed "+C.lt,textAlign:"center",fontSize:12,color:C.mid,cursor:"pointer"}},
+          "Cliquer pour ajouter une image (max 2 Mo)",
+          h("input",{type:"file",accept:"image/*",onChange:handleThemeImg,style:{display:"none"}}))),
+
+    h("div",{style:{display:"flex",gap:12,marginBottom:24}},
+      h("div",{style:{flex:1}},
+        h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:6}},"ORDRE"),
+        h("input",{type:"number",value:tf.sort_order,onChange:function(e){sTf(function(p){return Object.assign({},p,{sort_order:e.target.value});});},style:Object.assign({},inpS,{border:"1px solid "+C.lt,padding:14})})),
+      h("label",{style:{flex:1,display:"flex",alignItems:"center",gap:8,cursor:"pointer",paddingTop:24}},
+        h("input",{type:"checkbox",checked:!!tf.is_active,onChange:function(e){sTf(function(p){return Object.assign({},p,{is_active:e.target.checked});});}}),
+        h("span",{style:{fontSize:12,color:C.fg}},"Publi\u00e9e (visible dans l'app)"))),
+
+    h("div",{style:{display:"flex",gap:1,marginTop:32}},
+      h("button",{onClick:function(){sTei(null);sTf(emptyTheme());sV("themes");},style:{flex:1,padding:"16px 0",background:"transparent",border:"1px solid "+C.lt,borderRadius:0,fontSize:13,cursor:"pointer",fontFamily:font,color:C.mid}},"Annuler"),
+      h("button",{onClick:submitTheme,disabled:saving,style:{flex:2,padding:"16px 0",background:saving?C.mid:C.fg,color:C.bg,border:"none",borderRadius:0,fontSize:13,fontWeight:500,letterSpacing:"0.15em",textTransform:"uppercase",cursor:saving?"default":"pointer",fontFamily:font}},saving?"Enregistrement\u2026":(tei?"Enregistrer":"Cr\u00e9er")))
+  );
+
+  // TAGGING (paginé, une question à la fois)
+  var activeThemes=th.filter(function(t){return t.filter_type!=="category";}); // exclure les 4 legacy
+  var tagList=qs.filter(function(q){
+    if(!q.active)return false;
+    if(tgFilter==="untagged")return !q.theme_slugs||q.theme_slugs.length===0;
+    if(tgFilter==="tagged")return q.theme_slugs&&q.theme_slugs.length>0;
+    if(tgFilter.indexOf("theme:")===0){var s=tgFilter.slice(6);return q.theme_slugs&&q.theme_slugs.indexOf(s)>=0;}
+    return true;
+  });
+  var safeIdx=Math.max(0,Math.min(tgIdx,tagList.length-1));
+  var curQ=tagList[safeIdx]||null;
+  var curOk=curQ&&(curQ.answers||[]).find(function(a){return a.is_correct;});
+  var totalTagged=qs.filter(function(q){return q.theme_slugs&&q.theme_slugs.length>0;}).length;
+  var suggestions=curQ?suggestTags(curQ):[];
+
+  function loadCurPicks(q){
+    if(!q){sTgPicks([]);return;}
+    if(q.theme_slugs&&q.theme_slugs.length>0)sTgPicks(q.theme_slugs.slice());
+    else sTgPicks(suggestTags(q));
+  }
+  function gotoIdx(newIdx,saveCurrent){
+    var clamped=Math.max(0,Math.min(newIdx,tagList.length-1));
+    if(saveCurrent&&curQ)saveTags(curQ,tgPicks,true);
+    sTgIdx(clamped);
+    setTimeout(function(){loadCurPicks(tagList[clamped]||null);},50);
+  }
+  function togglePick(slug){
+    sTgPicks(function(prev){
+      if(prev.indexOf(slug)>=0)return prev.filter(function(x){return x!==slug;});
+      return prev.concat([slug]);
+    });
+  }
+
+  var taggingView=h("div",{style:{padding:24,maxWidth:640,margin:"0 auto"}},
+    // Header / progression
+    h("div",{style:{marginBottom:20}},
+      h("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8,gap:8,flexWrap:"wrap"}},
+        h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",textTransform:"uppercase"}},
+          tagList.length===0?"Rien à traiter":"Question "+(safeIdx+1)+" / "+tagList.length),
+        h("div",{style:{fontSize:11,color:C.mid}},totalTagged+" / "+qs.filter(function(q){return q.active;}).length+" taguées au total")),
+      // Progress bar
+      h("div",{style:{height:3,background:C.sub,position:"relative"}},
+        h("div",{style:{position:"absolute",top:0,left:0,height:"100%",width:(tagList.length>0?(safeIdx+1)/tagList.length*100:0)+"%",background:C.fg,transition:"width 0.2s"}})),
+      // Filter selector
+      h("div",{style:{display:"flex",gap:6,marginTop:12,flexWrap:"wrap"}},
+        ["untagged","tagged","all"].map(function(opt){
+          var labels={untagged:"À taguer",tagged:"Déjà taguées",all:"Toutes"};
+          return h("button",{key:opt,onClick:function(){sTgFilter(opt);sTgIdx(0);setTimeout(function(){var l=qs.filter(function(q){if(!q.active)return false;if(opt==="untagged")return !q.theme_slugs||q.theme_slugs.length===0;if(opt==="tagged")return q.theme_slugs&&q.theme_slugs.length>0;return true;});loadCurPicks(l[0]||null);},50);},
+            style:{padding:"6px 10px",background:tgFilter===opt?C.fg:"transparent",color:tgFilter===opt?C.bg:C.mid,border:"1px solid "+(tgFilter===opt?C.fg:C.lt),borderRadius:0,fontSize:11,cursor:"pointer",fontFamily:font,letterSpacing:"0.05em"}},labels[opt]);
+        }))),
+
+    // Card question
+    !curQ?h("div",{style:{padding:60,textAlign:"center",color:C.mid,fontSize:14,border:"1px solid "+C.sub,marginTop:24}},
+      tgFilter==="untagged"?"🎉 Toutes les questions sont taguées !":"Aucune question dans ce filtre."):
+    h("div",{style:{border:"1px solid "+C.lt,padding:24,marginBottom:20,background:C.card,animation:"reveal 0.2s"}},
+      // Meta line
+      h("div",{style:{display:"flex",gap:10,alignItems:"center",marginBottom:14,fontSize:11,color:C.mid,flexWrap:"wrap"}},
+        h("span",null,"★".repeat(curQ.difficulty)),
+        h("span",null,(curQ.categories||{}).name||""),
+        curQ.text_en&&h("span",{style:{color:C.ok||"#2D8B46",fontWeight:500}},"EN"),
+        curQ.image_url&&h("span",{style:{color:C.acc,fontWeight:500}},"IMG"),
+        curQ.theme_slugs&&curQ.theme_slugs.length>0&&h("span",{style:{color:C.fg,fontWeight:500}},curQ.theme_slugs.length+" tag"+(curQ.theme_slugs.length>1?"s":""))),
+      // Image if any
+      curQ.image_url&&h("img",{src:curQ.image_url,style:{width:"100%",maxHeight:240,objectFit:"cover",marginBottom:14,border:"1px solid "+C.lt}}),
+      // Question text
+      h("div",{style:{fontSize:16,lineHeight:1.4,marginBottom:10}},curQ.text),
+      curQ.text_en&&h("div",{style:{fontSize:13,color:C.mid,fontStyle:"italic",marginBottom:14}},curQ.text_en),
+      // Correct answer
+      curOk&&h("div",{style:{fontSize:13,color:C.ok||"#2D8B46",marginBottom:8}},"✓ "+curOk.text),
+      // Explanation
+      curQ.explanation&&h("div",{style:{fontSize:12,color:C.mid,padding:"10px 12px",background:C.sub,marginTop:10,lineHeight:1.5}},curQ.explanation)),
+
+    // Theme chips
+    curQ&&h("div",{style:{marginBottom:20}},
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",textTransform:"uppercase",marginBottom:10}},
+        "Collections (clique pour cocher / décocher)"),
+      h("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
+        activeThemes.map(function(t){
+          var slug=t.slug_fr||t.slug;
+          var picked=tgPicks.indexOf(slug)>=0;
+          var suggested=suggestions.indexOf(slug)>=0;
+          var bg=picked?C.fg:"transparent";
+          var col=picked?C.bg:(suggested?C.acc:C.mid);
+          var bd=picked?C.fg:(suggested?C.acc:C.lt);
+          return h("button",{key:t.id,onClick:function(){togglePick(slug);},
+            style:{padding:"7px 12px",background:bg,color:col,border:"1px solid "+bd,borderRadius:0,fontSize:12,cursor:"pointer",fontFamily:font,letterSpacing:"0.03em",borderStyle:suggested&&!picked?"dashed":"solid"}},
+            t.name+(picked?" ✓":""));
+        })),
+      h("div",{style:{fontSize:10,color:C.mid,marginTop:10}},
+        h("span",{style:{color:C.acc}},"Pointillés rouges"),
+        " = suggestion auto. Clique pour confirmer ou ajoute / retire d'autres collections.")),
+
+    // Nav buttons
+    curQ&&h("div",{style:{display:"flex",gap:1,marginTop:20}},
+      h("button",{onClick:function(){gotoIdx(safeIdx-1,false);},disabled:safeIdx===0,
+        style:{flex:1,padding:"14px 0",background:"transparent",border:"1px solid "+C.lt,borderRadius:0,fontSize:12,cursor:safeIdx===0?"default":"pointer",fontFamily:font,color:safeIdx===0?C.lt:C.mid,opacity:safeIdx===0?0.4:1}},"← Précédent"),
+      h("button",{onClick:function(){gotoIdx(safeIdx+1,false);},
+        style:{flex:1,padding:"14px 0",background:"transparent",border:"1px solid "+C.lt,borderRadius:0,fontSize:12,cursor:"pointer",fontFamily:font,color:C.mid}},"Skip →"),
+      h("button",{onClick:function(){gotoIdx(safeIdx+(tgFilter==="untagged"?0:1),true);},disabled:saving,
+        style:{flex:2,padding:"14px 0",background:saving?C.mid:C.fg,color:C.bg,border:"none",borderRadius:0,fontSize:13,fontWeight:500,letterSpacing:"0.15em",textTransform:"uppercase",cursor:saving?"default":"pointer",fontFamily:font}},
+        saving?"…":"Sauver & Suivant"))
+  );
+
   return h("div",{style:{minHeight:"100vh",background:C.bg,color:C.fg,fontFamily:font}},
     toastEl,cfEl,pvEl,header,
-    v==="list"?listView:v==="form"?formView:v==="analytics"?analyticsView:statsView);
+    v==="list"?listView:v==="form"?formView:v==="themes"?themesView:v==="themeForm"?themeFormView:v==="tagging"?taggingView:v==="analytics"?analyticsView:statsView);
 }
 
 ReactDOM.render(h(Admin), document.getElementById("root"));
