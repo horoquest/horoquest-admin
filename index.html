@@ -48,22 +48,26 @@ function empty(){return{text:"",text_en:"",diff:1,cat_id:"",expl:"",expl_en:"",i
 function emptyTheme(){return{name:"",name_en:"",slug_fr:"",slug_en:"",description:"",description_en:"",imgP:null,sort_order:100,is_active:false,filter_type:"tag",filter_value:""};}
 
 var SUGGEST_RULES={
-  "rolex":/\b(rolex|submariner|daytona|gmt[- ]master|sea[- ]dweller|cosmograph|explorer|day[- ]?date|datejust|wilsdorf|deepsea|milgauss|yacht[- ]?master|air[- ]?king|oyster\b|paul newman)\b/i,
-  "omega":/\b(omega|speedmaster|seamaster|de\s+ville|constellation|brandt\b|moonwatch|planet ocean|aqua terra|railmaster|dark side of the moon)\b/i,
-  "patek-philippe":/\b(patek(?:\s+philippe)?|calatrava|nautilus|aquanaut|grandmaster chime|antoine norbert|jean[- ]adrien philippe)\b/i,
-  "breguet":/\b(breguet|abraham[- ]louis|spiral breguet|montre perp[ée]tuelle|marie[- ]antoinette|tact)\b/i,
-  "conquete-spatiale":/\b(lune\b|moon\b|nasa|apollo|astronaute|spatial|space\b|orbit|gemini|mercury|cosmonaute|gagarine|armstrong|aldrin|cernan|skylab|iss\b|esa\b)\b/i,
-  "icones-design":/\b(nautilus|royal oak|reverso|tank\b|monaco|carrera|santos\b|navitimer|big bang|ingenieur|polerouter|el primero)\b/i,
-  "plongee":/\b(plong[ée]|diver|fifty fathoms|submariner|sea[- ]dweller|aquaracer|monster|turtle|[ée]tanch|profondeur|water resistance|saturation|cousteau|comex)\b/i,
-  "aviation":/\b(pilot|aviation|navitimer|flight|aviateur|cockpit|lindbergh|wright|breitling.*nav|hour angle|tour du monde)\b/i,
-  "chronographe":/\b(chronograph|chrono\b|el primero|caliber 11|valjoux|7750|lemania|monaco|carrera|navitimer|daytona|rattrapante)\b/i,
-  "crise-quartz-70s":/\b(crise du quartz|quartz crisis|seventies|ann[ée]es 70|1970s|swatch|hayek\b|asuag|ssih|seiko astron|beta 21)\b/i,
-  "people":/\b(paul newman|steve mcqueen|brando|stallone|elvis|kennedy|john lennon|obama|cousteau|james bond|eric clapton|jay[- ]?z|john mayer|ellen degeneres)\b/i,
-  "militaire":/\b(militaire|military|army|navy|marine nationale|\bMN\b|dirty dozen|G[- ]?10|A[- ]?11|GG[- ]?W|W10\b|seconde guerre|world war|troupe|commando|nageur de combat)\b/i,
-  "independants":/\b(f\.?\s?p\.?\s?journe|fran[çc]ois[- ]paul journe|philippe dufour|george daniels|mb&f|de bethune|greubel forsey|akrivia|voutilainen|laurent ferrier|vianney halter|romain gauthier|h\. moser|moser & cie|urban j[üu]rgensen|gr[öo]nefeld|david candaux|rexhep rexhepi|simon brette|bernhard lederer|theo auffret|charles frodsham|urwerk|ressence|atelier de chronom[ée]trie)\b/i,
-  "complications":/\b(tourbillon|quanti[èe]me perp[ée]tuel|perpetual calendar|r[ée]p[ée]tition minutes|minute repeater|grande sonnerie|petite sonnerie|[ée]quation du temps|equation of time|rattrapante|split[- ]seconds|fus[ée]e|micro[- ]rotor|squelett?e?|jumping hour|heure sautante|carrousel)\b/i,
-  "scandales":/\b(scandale|fraude|faux\b|contrefa|copie\b|cambriolage|escroquer|arnaque|d[ée]tourn|panama papers|jho low|hatton garden|patrick heiniger)\b/i,
-  "identification-visuelle":/\b(reconnais|identifier|identifie\b|visuel|spot the watch|quelle est cette)\b/i
+  "rolex":/\b(rolex|submariner|daytona|gmt[- ]master|sea[- ]dweller|cosmograph|explorer|day[- ]?date|datejust|wilsdorf|deepsea|milgauss|yacht[- ]?master|air[- ]?king|oyster\b)\b/i,
+  "omega":/\b(omega|speedmaster|seamaster|de\s+ville|constellation|brandt\b|moonwatch|planet ocean|aqua terra|railmaster|dark side of the moon|moonswatch)\b/i,
+  "conquete-spatiale":/\b(lune\b|moon\b|nasa|apollo|astronaute|spatial|space\b|orbit|gemini|mercury|cosmonaute|gagarine|armstrong|aldrin|cernan|skylab|iss\b|esa\b|extrav[ée]hiculaire|eva\b)\b/i,
+  "icones-design":/\b(nautilus|royal oak|reverso|tank\b|monaco|carrera|santos\b|navitimer|big bang|ingenieur|polerouter|el primero|gerald genta|g[ée]rald genta)\b/i,
+  "plongee-profondeurs":/\b(plong[ée]|diver|fifty fathoms|submariner|sea[- ]dweller|aquaracer|monster|turtle|[ée]tanch|profondeur|water resistance|saturation|cousteau|comex|panerai)\b/i,
+  "pilotes-aviation":/\b(pilot|aviation|navitimer|flight|aviateur|cockpit|lindbergh|wright|breitling.*nav|hour angle|tour du monde|chuck yeager|mach\b)\b/i,
+  "aventuriers-explorateurs":/\b(heyerdahl|kon[- ]?tiki|hillary|edmund hillary|tenzing|everest|polar|p[ôo]le nord|p[ôo]le sud|amundsen|scott\b|mercator|magellan|cousteau|exp[ée]dition|conqu[ée]rant|tour du monde|circumnavigation)\b/i,
+  "haute-horlogerie":/\b(patek(?:\s+philippe)?|calatrava|nautilus|aquanaut|grandmaster chime|audemars(?:\s+piguet)?|royal oak|vacheron(?:\s+constantin)?|patrimony|overseas|a\.?\s?lange|lange\s*&\s*s[öo]hne|datograph|odysseus|haute horlogerie|horlogerie d'art|breguet)\b/i,
+  "les-horlogers":/\b(abraham[- ]louis breguet|george daniels|philippe dufour|gerald genta|g[ée]rald genta|fran[çc]ois[- ]paul journe|antoine lecoultre|louis cartier|hans wilsdorf|nicolas g\.? hayek|jean[- ]claude biver|max bill|john arnold|abraham louis perrelet|julien le roy|ferdinand berthoud)\b/i,
+  "chronographes":/\b(chronograph|chrono\b|el primero|caliber 11|valjoux|7750|lemania|monaco|carrera|navitimer|daytona|rattrapante|split[- ]seconds|tachym[èe]tre|t[ée]l[ée]m[èe]tre)\b/i,
+  "celebrites-cinema":/\b(paul newman|steve mcqueen|brando|stallone|elvis|kennedy|john lennon|obama|james bond|agent\s*007|eric clapton|jay[- ]?z|john mayer|ellen degeneres|tom cruise|interstellar|hollywood|cin[ée]ma)\b/i,
+  "independants":/\b(f\.?\s?p\.?\s?journe|fran[çc]ois[- ]paul journe|philippe dufour|mb&f|de bethune|greubel forsey|akrivia|voutilainen|laurent ferrier|vianney halter|romain gauthier|h\. moser|moser & cie|urban j[üu]rgensen|gr[öo]nefeld|david candaux|rexhep rexhepi|simon brette|bernhard lederer|theo auffret|charles frodsham|urwerk|ressence|atelier de chronom[ée]trie|christiaan van der klaauw)\b/i,
+  "militaire":/\b(militaire|military|army|navy|marine nationale|\bMN\b|dirty dozen|G[- ]?10|A[- ]?11|GG[- ]?W|W10\b|seconde guerre|world war|troupe|commando|nageur de combat|wehrmacht)\b/i,
+  "scandales-faussaires":/\b(scandale|fraude|faux\b|contrefa|copie\b|cambriolage|escroquer|arnaque|d[ée]tourn|panama papers|jho low|hatton garden|patrick heiniger|vol\b)\b/i,
+  "reconnais-la-montre":/\b(reconnais|identifie\b|identifier|spot the watch|quelle est cette|de quelle marque|à quelle marque)\b/i,
+  "crise-du-quartz":/\b(crise du quartz|quartz crisis|swatch|hayek\b|asuag|ssih|seiko astron|beta 21|caliber 35a)\b/i,
+  "technique-complications":/\b(tourbillon|quanti[èe]me perp[ée]tuel|perpetual calendar|r[ée]p[ée]tition minutes|minute repeater|grande sonnerie|petite sonnerie|[ée]quation du temps|equation of time|rattrapante|fus[ée]e|micro[- ]rotor|squelett?e?|jumping hour|heure sautante|carrousel|spiral|balancier|[ée]chappement|complication)\b/i,
+  "les-origines":/\b(huygens|christiaan huygens|harrison|john harrison|prix de la longitude|h[1-4]\b|galil[ée]|acad[ée]mie royale|royal society|berthoud|ferdinand berthoud|julien le roy|henri sully|premier chronom[èe]tre|premi[èe]res montres|sablier|cadran solaire|clepsydre|astrolabe)\b/i,
+  "montres-vintage":/\b(vintage|tropical dial|patine|cadran tropical|ann[ée]es 19[5-8]0|1950s|1960s|1970s|1980s|seventies|sixties|fifties|eighties|nato\b)\b/i,
+  "horlogerie-japonaise":/\b(seiko|citizen|casio|g[- ]shock|grand seiko|credor|king seiko|naoya hida|kurono|spring drive|japon\b|japonais|japonaise|tokyo|nippon)\b/i
 };
 function loader(){return h("div",{style:{display:"flex",justifyContent:"center",padding:40}},h("div",{style:{width:20,height:20,border:"2px solid "+C.lt,borderTopColor:C.fg,borderRadius:"50%",animation:"spin 0.6s linear infinite"}}));}
 
@@ -288,7 +292,7 @@ function Admin(){
       if(SUGGEST_RULES[slug].test(txt))picks.push(slug);
     });
     var idCat=(cats.find(function(c){return c.slug==="identification";})||{}).id;
-    if(idCat&&q.category_id===idCat&&picks.indexOf("identification-visuelle")<0)picks.push("identification-visuelle");
+    if(idCat&&q.category_id===idCat&&picks.indexOf("reconnais-la-montre")<0)picks.push("reconnais-la-montre");
     return picks;
   }
 
