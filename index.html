@@ -77,7 +77,7 @@ function Admin(){
   var _v=useState("list"),v=_v[0],sV=_v[1];
   var _f=useState(empty()),f=_f[0],sF=_f[1];
   var _ei=useState(null),ei=_ei[0],sEi=_ei[1];
-  var _fl=useState({cat:"all",diff:"all",search:""}),fl=_fl[0],sFl=_fl[1];
+  var _fl=useState({cat:"all",diff:"all",search:"",theme:"all"}),fl=_fl[0],sFl=_fl[1];
   var _t=useState(null),toast=_t[0],sT=_t[1];
   var _cf=useState(null),cf=_cf[0],sCf=_cf[1];
   var _ld=useState(false),ld=_ld[0],sLd=_ld[1];
@@ -415,6 +415,7 @@ function Admin(){
   var filtered=qs.filter(function(q){
     if(fl.cat!=="all"&&q.category_id!==fl.cat)return false;
     if(fl.diff!=="all"&&q.difficulty!==parseInt(fl.diff))return false;
+    if(fl.theme!=="all"&&(!q.theme_slugs||q.theme_slugs.indexOf(fl.theme)<0))return false;
     if(fl.search&&q.text.toLowerCase().indexOf(fl.search.toLowerCase())===-1)return false;
     return true;
   });
@@ -513,7 +514,9 @@ function Admin(){
       h("select",{value:fl.cat,onChange:function(e){sFl(function(p){return Object.assign({},p,{cat:e.target.value});});},style:selS},
         h("option",{value:"all"},"Cat\u00e9gorie"),cats.map(function(c){return h("option",{key:c.id,value:c.id},c.name);})),
       h("select",{value:fl.diff,onChange:function(e){sFl(function(p){return Object.assign({},p,{diff:e.target.value});});},style:selS},
-        h("option",{value:"all"},"Difficult\u00e9"),DIFFS.map(function(d){return h("option",{key:d.v,value:d.v},d.v+" - "+d.l);}))),
+        h("option",{value:"all"},"Difficult\u00e9"),DIFFS.map(function(d){return h("option",{key:d.v,value:d.v},d.v+" - "+d.l);})),
+      h("select",{value:fl.theme,onChange:function(e){sFl(function(p){return Object.assign({},p,{theme:e.target.value});});},style:selS},
+        h("option",{value:"all"},"Collection"),th.filter(function(t){return t.filter_type!=="category";}).map(function(t){var slug=t.slug_fr||t.slug;return h("option",{key:t.id,value:slug},t.name);}))),
     h("div",{style:{fontSize:11,color:C.mid,marginBottom:12}},filtered.length+" question"+(filtered.length>1?"s":"")),
     filtered.map(function(q,i){
       var catName=q.categories?q.categories.name:"";
@@ -708,6 +711,7 @@ function Admin(){
           h("div",{style:{fontSize:14,marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},t.name),
           h("div",{style:{fontSize:11,color:C.mid}},slug+" \u00b7 "+qCount+" question"+(qCount>1?"s":""))),
         h("div",{style:{display:"flex",gap:4,alignItems:"flex-start",flexShrink:0,flexWrap:"wrap"}},
+          h("button",{onClick:function(){sFl(function(p){return Object.assign({},p,{theme:slug,cat:"all",diff:"all",search:""});});sV("list");},style:{padding:"6px 10px",background:"transparent",border:"1px solid "+C.lt,borderRadius:0,fontSize:11,cursor:"pointer",fontFamily:font,color:C.fg}},"Questions"),
           h("button",{onClick:function(){startEditTheme(t);},style:{padding:"6px 10px",background:"transparent",border:"1px solid "+C.lt,borderRadius:0,fontSize:11,cursor:"pointer",fontFamily:font,color:C.mid}},"Mod."),
           h("button",{onClick:function(){toggleThemeActive(t);},style:{padding:"6px 10px",background:"transparent",border:"1px solid "+(t.is_active?C.mid:C.lt),borderRadius:0,fontSize:11,cursor:"pointer",fontFamily:font,color:t.is_active?C.fg:C.mid}},t.is_active?"On":"Off"))
       );
