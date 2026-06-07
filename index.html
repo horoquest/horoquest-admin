@@ -44,7 +44,7 @@ var font="'Helvetica Neue','Helvetica','Arial',sans-serif";
 var inpS={width:"100%",padding:"12px 0",background:"transparent",border:"none",borderBottom:"1px solid "+C.lt,color:C.fg,fontSize:15,fontFamily:font};
 var selS={padding:"10px 12px",background:C.card,border:"1px solid "+C.lt,borderRadius:0,color:C.fg,fontSize:12,fontFamily:font};
 
-function empty(){return{text:"",text_en:"",diff:1,cat_id:"",expl:"",expl_en:"",imgP:null,answers:[{t:"",te:"",ok:true},{t:"",te:"",ok:false},{t:"",te:"",ok:false},{t:"",te:"",ok:false}],active:true};}
+function empty(){return{text:"",text_en:"",diff:1,cat_id:"",expl:"",expl_en:"",imgP:null,answers:[{t:"",te:"",ok:true},{t:"",te:"",ok:false},{t:"",te:"",ok:false},{t:"",te:"",ok:false}],theme_slugs:[],active:true};}
 function emptyTheme(){return{name:"",name_en:"",slug_fr:"",slug_en:"",description:"",description_en:"",imgP:null,sort_order:100,is_active:false,filter_type:"tag",filter_value:""};}
 
 var SUGGEST_RULES={
@@ -356,7 +356,7 @@ function Admin(){
     }
 
     imgPromise.then(function(imageUrl){
-      var qData={text:f.text.trim(),text_en:f.text_en.trim()||null,difficulty:f.diff,category_id:f.cat_id,explanation:f.expl.trim(),explanation_en:f.expl_en.trim()||null,active:f.active,image_url:imageUrl};
+      var qData={text:f.text.trim(),text_en:f.text_en.trim()||null,difficulty:f.diff,category_id:f.cat_id,explanation:f.expl.trim(),explanation_en:f.expl_en.trim()||null,theme_slugs:f.theme_slugs||[],active:f.active,image_url:imageUrl};
       var p;
       if(ei){
         p=sbPatch("questions?id=eq."+ei,qData,tok)
@@ -382,7 +382,7 @@ function Admin(){
     imgFileRef.current=null;
     var ans=(q.answers||[]).map(function(a){return{t:a.text,te:a.text_en||"",ok:a.is_correct};});
     while(ans.length<4)ans.push({t:"",te:"",ok:false});
-    sF({text:q.text,text_en:q.text_en||"",diff:q.difficulty,cat_id:q.category_id||"",expl:q.explanation||"",expl_en:q.explanation_en||"",imgP:q.image_url||null,answers:ans,active:q.active!==false});
+    sF({text:q.text,text_en:q.text_en||"",diff:q.difficulty,cat_id:q.category_id||"",expl:q.explanation||"",expl_en:q.explanation_en||"",imgP:q.image_url||null,answers:ans,theme_slugs:(q.theme_slugs||[]).slice(),active:q.active!==false});
     sV("form");
   }
 
@@ -563,6 +563,14 @@ function Admin(){
     h("div",{style:{marginBottom:24}},
       h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:8}},"CAT\u00c9GORIE"),
       cats.map(function(c){return h("button",{key:c.id,onClick:function(){sF(function(p){return Object.assign({},p,{cat_id:c.id});});},style:{width:"100%",padding:"10px 12px",background:f.cat_id===c.id?C.fg:"transparent",color:f.cat_id===c.id?C.bg:C.mid,border:"1px solid "+C.lt,borderRadius:0,fontSize:12,cursor:"pointer",fontFamily:font,textAlign:"left",marginBottom:1}},c.name);})),
+    h("div",{style:{marginBottom:24}},
+      h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:8}},"COLLECTIONS"),
+      h("div",{style:{display:"flex",flexWrap:"wrap",gap:6}},
+        th.filter(function(t){return t.filter_type!=="category";}).map(function(t){
+          var slug=t.slug_fr||t.slug;
+          var picked=(f.theme_slugs||[]).indexOf(slug)>=0;
+          return h("button",{key:t.id,onClick:function(){sF(function(p){var cur=p.theme_slugs||[];var nx=cur.indexOf(slug)>=0?cur.filter(function(x){return x!==slug;}):cur.concat([slug]);return Object.assign({},p,{theme_slugs:nx});});},style:{padding:"7px 12px",background:picked?C.fg:"transparent",color:picked?C.bg:C.mid,border:"1px solid "+(picked?C.fg:C.lt),borderRadius:0,fontSize:12,cursor:"pointer",fontFamily:font,letterSpacing:"0.03em"}},t.name+(picked?" \u2713":""));
+        }))),
     h("div",{style:{marginBottom:24}},
       h("div",{style:{fontSize:11,color:C.mid,letterSpacing:"0.08em",marginBottom:8}},"R\u00c9PONSES"),
       f.answers.map(function(a,i){
